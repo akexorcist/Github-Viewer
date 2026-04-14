@@ -24,7 +24,6 @@ The app uses only the public GitHub REST API (unauthenticated). No login, no OAu
 | HTTP client | Ktor Client (`OkHttp` engine on Android, `CIO` on Desktop) |
 | Serialization | `kotlinx.serialization` |
 | Structured cache | Room 2.7+ (KMP, `BundledSQLiteDriver` on Desktop) |
-| Preferences | DataStore Preferences (KMP) |
 | Async | `kotlinx.coroutines` |
 | ViewModel | `androidx.lifecycle:lifecycle-viewmodel` (KMP) |
 | DI | Koin (KMP) |
@@ -56,8 +55,8 @@ Github-Viewer/
 ### Layer Rules
 
 - `commonMain` — domain models, repository interfaces, repository implementations, ViewModels
-- `androidMain` — OkHttp engine, Android Room driver, DataStore file path, Compose UI
-- `desktopMain` — CIO engine, BundledSQLiteDriver, temp-dir DataStore path (test infra only)
+- `androidMain` — OkHttp engine, Android Room driver, Compose UI
+- `desktopMain` — CIO engine, BundledSQLiteDriver (test infra only)
 - `app/` — Compose screens, NavHost, Koin app module
 
 ### No Use Case Layer
@@ -77,7 +76,6 @@ Base URL: `https://api.github.com`
 | User profile | `GET /users/{login}` |
 | User's public repos | `GET /users/{login}/repos?page={n}&per_page=30` |
 | Repository detail | `GET /repos/{owner}/{repo}` |
-| Repository README | `GET /repos/{owner}/{repo}/readme` |
 
 ### Rate Limiting
 
@@ -155,14 +153,14 @@ Displays public information for a GitHub user.
 Displays public information for a single GitHub repository.
 
 **Data shown:**
-- Repository name + owner login
+- Repository name
+- Owner login (displayed as text only — no navigation)
 - Description
 - Stats: stars, forks, open issues count, watchers
 - Primary language
 - Topics (tags)
 - License name (if available)
 - Last pushed date
-- README content (rendered as markdown)
 
 ---
 
@@ -188,6 +186,14 @@ All screens follow cache-first behaviour:
 No automatic background sync. Data is only refreshed:
 - On first load (if cache is empty)
 - When the user explicitly triggers a refresh
+
+---
+
+## Offline / No Network Behavior
+
+- If the device has no network and the cache is empty → show a `NetworkError` state with a retry button
+- If the device has no network but the cache has data → display cached data and show a snackbar: **"No internet connection"**
+- If a manual refresh fails due to no network → show a snackbar: **"No internet connection"**, keep existing cached data visible
 
 ---
 
@@ -266,7 +272,6 @@ data class UserProfileUiState(
 // Repository detail screen
 data class RepositoryDetailUiState(
     val repository: Repository? = null,
-    val readme: String? = null,
     val isLoading: Boolean = false,
     val lastUpdatedAt: Instant? = null,
     val error: AppError? = null
@@ -285,7 +290,7 @@ Location: `src/commonTest/` in each module
 - In-memory Room database (`BundledSQLiteDriver`)
 - `kotlinx-coroutines-test` for ViewModel and Flow testing
 - `Turbine` for asserting `StateFlow` emissions
-- Tests cover: repository implementations, ViewModel state transitions, pagination logic, error mapping, cache-first behaviour
+- Tests cover: repository implementations, ViewModel state transitions, pagination logic, error mapping, cache-first behaviour, offline snackbar trigger conditions
 
 ### Integration Tests (real components — Desktop JVM, real network)
 
@@ -322,3 +327,6 @@ Run integration tests: `./gradlew :integration-test:desktopTest`
 - GitHub GraphQL API
 - Desktop UI
 - iOS target
+- README rendering
+- Dynamic Color (Material You)
+- Navigation from Repository Detail to owner's profile
