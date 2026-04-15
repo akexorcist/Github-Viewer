@@ -10,7 +10,7 @@ import dev.akexorcist.githubviewer.data.mapper.toEntity
 import dev.akexorcist.githubviewer.data.model.Repository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 interface RepositoryRepository {
     fun getRepository(owner: String, repo: String, forceRefresh: Boolean = false): Flow<Result<Repository>>

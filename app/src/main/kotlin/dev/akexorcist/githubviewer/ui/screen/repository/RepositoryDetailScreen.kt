@@ -41,6 +41,7 @@ import dev.akexorcist.githubviewer.data.model.Repository
 import dev.akexorcist.githubviewer.presentation.repository.RepositoryDetailSnackbarEvent
 import dev.akexorcist.githubviewer.presentation.repository.RepositoryDetailViewModel
 import dev.akexorcist.githubviewer.ui.component.LastUpdatedText
+import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,7 +120,7 @@ fun RepositoryDetailScreen(
 @Composable
 private fun RepositoryDetail(
     repository: Repository,
-    lastUpdatedAt: kotlinx.datetime.Instant?,
+    lastUpdatedAt: Instant?,
     modifier: Modifier = Modifier,
 ) {
     Column(

@@ -2,7 +2,7 @@ package dev.akexorcist.githubviewer.presentation.repository
 
 import dev.akexorcist.githubviewer.core.common.AppError
 import dev.akexorcist.githubviewer.data.model.Repository
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class RepositoryDetailUiState(
     val repository: Repository? = null,

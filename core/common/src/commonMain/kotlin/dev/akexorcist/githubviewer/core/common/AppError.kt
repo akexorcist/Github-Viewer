@@ -1,6 +1,6 @@
 package dev.akexorcist.githubviewer.core.common
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 sealed class AppError {
     data class NetworkError(val cause: Throwable) : AppError()

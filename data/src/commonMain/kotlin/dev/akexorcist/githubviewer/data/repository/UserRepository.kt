@@ -13,7 +13,7 @@ import dev.akexorcist.githubviewer.data.model.SearchUserItem
 import dev.akexorcist.githubviewer.data.model.User
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 interface UserRepository {
     fun getUser(login: String, forceRefresh: Boolean = false): Flow<Result<User>>

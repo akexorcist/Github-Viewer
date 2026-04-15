@@ -4,7 +4,7 @@ import dev.akexorcist.githubviewer.core.common.AppError
 import dev.akexorcist.githubviewer.core.common.PagingState
 import dev.akexorcist.githubviewer.data.model.Repository
 import dev.akexorcist.githubviewer.data.model.User
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class UserProfileUiState(
     val user: User? = null,
