@@ -18,6 +18,6 @@ data class SectionState<T>(
     val error: AppError? = null,
 )
 
-sealed class SearchSnackbarEvent {
-    data object NoInternet : SearchSnackbarEvent()
+sealed interface SearchSnackbarEvent {
+    data object NoInternet : SearchSnackbarEvent
 }

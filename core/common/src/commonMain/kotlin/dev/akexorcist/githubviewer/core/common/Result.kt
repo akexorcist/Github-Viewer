@@ -20,4 +20,7 @@ inline fun <T, R> Result<T>.map(transform: (T) -> R): Result<R> = when (this) {
     is Result.Error -> this
 }
 
-fun <T> Result<T>.getOrNull(): T? = (this as? Result.Success)?.data
+fun <T> Result<T>.getOrNull(): T? = when (this) {
+    is Result.Success -> data
+    is Result.Error -> null
+}

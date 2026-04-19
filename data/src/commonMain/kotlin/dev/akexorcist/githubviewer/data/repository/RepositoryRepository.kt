@@ -8,6 +8,8 @@ import dev.akexorcist.githubviewer.core.network.GitHubApiService
 import dev.akexorcist.githubviewer.data.mapper.toDomain
 import dev.akexorcist.githubviewer.data.mapper.toEntity
 import dev.akexorcist.githubviewer.data.model.Repository
+import dev.akexorcist.githubviewer.data.util.toAppError
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlin.time.Clock
@@ -37,6 +39,7 @@ class RepositoryRepositoryImpl(
                     emit(Result.Success(dto.toDomain()))
                 }
                 .onFailure { throwable ->
+                    if (throwable is CancellationException) throw throwable
                     if (cached == null) {
                         emit(Result.Error(throwable.toAppError()))
                     }
@@ -45,21 +48,19 @@ class RepositoryRepositoryImpl(
     }
 
     override fun getUserRepositories(login: String, page: Int, forceRefresh: Boolean): Flow<Result<PageResult<Repository>>> = flow {
-        if (page == 1) {
-            val cached = repositoryDao.getRepositoriesByOwner(login)
-            if (cached.isNotEmpty()) {
-                emit(
-                    Result.Success(
-                        PageResult(
-                            items = cached.map { it.toDomain() },
-                            page = 1,
-                            hasNextPage = cached.size >= PAGE_SIZE,
-                        )
+        val cached = if (page == 1) repositoryDao.getRepositoriesByOwner(login) else emptyList()
+        if (cached.isNotEmpty()) {
+            emit(
+                Result.Success(
+                    PageResult(
+                        items = cached.map { it.toDomain() },
+                        page = 1,
+                        hasNextPage = cached.size >= PAGE_SIZE,
                     )
                 )
-            }
+            )
         }
-        if (forceRefresh || page > 1) {
+        if (forceRefresh || page > 1 || cached.isEmpty()) {
             runCatching { apiService.getUserRepositories(login, page) }
                 .onSuccess { dtos ->
                     val now = Clock.System.now().toEpochMilliseconds()
@@ -75,7 +76,8 @@ class RepositoryRepositoryImpl(
                     )
                 }
                 .onFailure { throwable ->
-                    emit(Result.Error(throwable.toAppError()))
+                    if (throwable is CancellationException) throw throwable
+                    if (cached.isEmpty()) emit(Result.Error(throwable.toAppError()))
                 }
         }
     }
@@ -93,6 +95,9 @@ class RepositoryRepositoryImpl(
                         )
                     )
                 },
-                onFailure = { Result.Error(it.toAppError()) },
+                onFailure = { throwable ->
+                    if (throwable is CancellationException) throw throwable
+                    Result.Error(throwable.toAppError())
+                },
             )
 }

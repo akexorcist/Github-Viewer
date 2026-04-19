@@ -16,7 +16,7 @@ data class RepositoryEntity(
     val openIssues: Int,
     val watchers: Int,
     val language: String?,
-    val topics: String,
+    val topics: List<String>,
     val licenseName: String?,
     val pushedAt: String?,
     val cachedAt: Long,

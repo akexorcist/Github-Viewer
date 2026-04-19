@@ -14,7 +14,10 @@ import dev.akexorcist.githubviewer.presentation.search.SearchViewModel
 object TestDependencies {
     fun createDatabase(): AppDatabase = createInMemoryDatabase()
 
-    fun createApiService(): GitHubApiService = GitHubApiService.create()
+    // Passes GITHUB_TOKEN when available to raise rate limits:
+    //   unauthenticated: 60 req/hour core, 10 req/min search
+    //   authenticated:  5000 req/hour core, 30 req/min search
+    fun createApiService(): GitHubApiService = GitHubApiService.create(TestEnvironment.githubToken)
 
     fun createUserRepository(
         apiService: GitHubApiService = createApiService(),

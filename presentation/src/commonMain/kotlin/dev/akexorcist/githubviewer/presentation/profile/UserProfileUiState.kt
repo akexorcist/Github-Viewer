@@ -14,6 +14,6 @@ data class UserProfileUiState(
     val error: AppError? = null,
 )
 
-sealed class UserProfileSnackbarEvent {
-    data object NoInternet : UserProfileSnackbarEvent()
+sealed interface UserProfileSnackbarEvent {
+    data object NoInternet : UserProfileSnackbarEvent
 }

@@ -6,10 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -17,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -36,11 +33,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.akexorcist.githubviewer.R
 import dev.akexorcist.githubviewer.data.model.Repository
 import dev.akexorcist.githubviewer.presentation.repository.RepositoryDetailSnackbarEvent
 import dev.akexorcist.githubviewer.presentation.repository.RepositoryDetailViewModel
 import dev.akexorcist.githubviewer.ui.component.LastUpdatedText
+import dev.akexorcist.githubviewer.ui.component.ScreenErrorState
+import dev.akexorcist.githubviewer.ui.theme.GithubViewerTheme
 import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,12 +53,13 @@ fun RepositoryDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val noInternetMessage = stringResource(R.string.error_no_internet_connection)
 
     LaunchedEffect(Unit) {
         viewModel.snackbarEvent.collect { event ->
             when (event) {
                 is RepositoryDetailSnackbarEvent.NoInternet ->
-                    snackbarHostState.showSnackbar("No internet connection")
+                    snackbarHostState.showSnackbar(noInternetMessage)
             }
         }
     }
@@ -92,26 +95,24 @@ fun RepositoryDetailScreen(
                 contentAlignment = Alignment.Center,
             ) { CircularProgressIndicator() }
 
-            uiState.error != null -> Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Failed to load repository")
-                    Spacer(Modifier.height(8.dp))
-                    Button(onClick = viewModel::onRefresh) { Text("Retry") }
-                }
-            }
-
-            uiState.repository != null -> RepositoryDetail(
-                repository = uiState.repository!!,
-                lastUpdatedAt = uiState.lastUpdatedAt,
+            uiState.error != null -> ScreenErrorState(
+                message = stringResource(R.string.error_failed_to_load_repository),
+                onRetry = viewModel::onRefresh,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
+
+            uiState.repository != null -> {
+                val repository = uiState.repository ?: return@Scaffold
+                RepositoryDetail(
+                    repository = repository,
+                    lastUpdatedAt = uiState.lastUpdatedAt,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                )
+            }
         }
     }
 }
@@ -123,10 +124,7 @@ private fun RepositoryDetail(
     lastUpdatedAt: Instant?,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier.verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(0.dp),
-    ) {
+    Column(modifier = modifier.verticalScroll(rememberScrollState())) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -137,8 +135,8 @@ private fun RepositoryDetail(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (repository.description != null) {
-                Text(text = repository.description, style = MaterialTheme.typography.bodyMedium)
+            repository.description?.let {
+                Text(text = it, style = MaterialTheme.typography.bodyMedium)
             }
         }
 
@@ -162,15 +160,9 @@ private fun RepositoryDetail(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            if (repository.language != null) {
-                InfoRow(label = "Language", value = repository.language)
-            }
-            if (repository.licenseName != null) {
-                InfoRow(label = "License", value = repository.licenseName)
-            }
-            if (repository.pushedAt != null) {
-                InfoRow(label = "Last pushed", value = repository.pushedAt.take(10))
-            }
+            repository.language?.let { InfoRow(label = "Language", value = it) }
+            repository.licenseName?.let { InfoRow(label = "License", value = it) }
+            repository.pushedAt?.let { InfoRow(label = "Last pushed", value = it.take(10)) }
         }
 
         if (repository.topics.isNotEmpty()) {
@@ -216,5 +208,64 @@ private fun InfoRow(label: String, value: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(text = value, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+// ─── Previews ────────────────────────────────────────────────────────────────
+
+private val previewRepository = Repository(
+    id = 1L,
+    name = "Github-Viewer",
+    fullName = "akexorcist/Github-Viewer",
+    ownerLogin = "akexorcist",
+    ownerAvatarUrl = "",
+    description = "A GitHub viewer app built with Kotlin Multiplatform and Jetpack Compose",
+    stars = 128,
+    forks = 24,
+    openIssues = 5,
+    watchers = 128,
+    language = "Kotlin",
+    topics = listOf("android", "kotlin", "compose", "kmp"),
+    licenseName = "Apache 2.0",
+    pushedAt = "2024-01-15T10:30:00Z",
+)
+
+@Preview(showBackground = true)
+@Composable
+private fun RepositoryDetailPreview() {
+    GithubViewerTheme {
+        RepositoryDetail(
+            repository = previewRepository,
+            lastUpdatedAt = null,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RepositoryDetailNoTopicsPreview() {
+    GithubViewerTheme {
+        RepositoryDetail(
+            repository = previewRepository.copy(topics = emptyList(), description = null),
+            lastUpdatedAt = null,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun StatItemPreview() {
+    GithubViewerTheme {
+        StatItem(label = "Stars", value = "128")
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun InfoRowPreview() {
+    GithubViewerTheme {
+        InfoRow(label = "Language", value = "Kotlin")
     }
 }

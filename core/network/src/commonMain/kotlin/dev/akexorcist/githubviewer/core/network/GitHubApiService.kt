@@ -71,7 +71,7 @@ class GitHubApiService(private val client: HttpClient) {
     companion object {
         private const val BASE_URL = "https://api.github.com"
 
-        fun create(): GitHubApiService = GitHubApiService(
+        fun create(token: String? = null): GitHubApiService = GitHubApiService(
             createHttpClient {
                 install(ContentNegotiation) {
                     json(Json {
@@ -85,6 +85,7 @@ class GitHubApiService(private val client: HttpClient) {
                 defaultRequest {
                     header("Accept", "application/vnd.github+json")
                     header("X-GitHub-Api-Version", "2022-11-28")
+                    if (token != null) header("Authorization", "Bearer $token")
                 }
             }
         )

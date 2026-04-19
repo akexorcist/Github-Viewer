@@ -38,14 +38,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import dev.akexorcist.githubviewer.R
 import dev.akexorcist.githubviewer.data.model.Repository
 import dev.akexorcist.githubviewer.data.model.User
 import dev.akexorcist.githubviewer.presentation.profile.UserProfileSnackbarEvent
 import dev.akexorcist.githubviewer.presentation.profile.UserProfileViewModel
 import dev.akexorcist.githubviewer.ui.component.LastUpdatedText
+import dev.akexorcist.githubviewer.ui.component.ScreenErrorState
+import dev.akexorcist.githubviewer.ui.theme.GithubViewerTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,12 +61,13 @@ fun UserProfileScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val noInternetMessage = stringResource(R.string.error_no_internet_connection)
 
     LaunchedEffect(Unit) {
         viewModel.snackbarEvent.collect { event ->
             when (event) {
                 is UserProfileSnackbarEvent.NoInternet ->
-                    snackbarHostState.showSnackbar("No internet connection")
+                    snackbarHostState.showSnackbar(noInternetMessage)
             }
         }
     }
@@ -92,19 +98,22 @@ fun UserProfileScreen(
                 contentAlignment = Alignment.Center,
             ) { CircularProgressIndicator() }
 
-            uiState.error != null -> ErrorState(
+            uiState.error != null -> ScreenErrorState(
+                message = stringResource(R.string.error_failed_to_load_profile),
                 onRetry = viewModel::onRefresh,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
 
-            uiState.user != null -> LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-            ) {
-                item { UserHeader(user = uiState.user!!) }
+            uiState.user != null -> {
+                val user = uiState.user ?: return@Scaffold
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                ) {
+                item { UserHeader(user = user) }
 
                 uiState.lastUpdatedAt?.let {
                     item {
@@ -150,6 +159,7 @@ fun UserProfileScreen(
                     }
                 }
             }
+            }
         }
     }
 }
@@ -172,8 +182,8 @@ private fun UserHeader(user: User) {
             )
             Spacer(Modifier.width(16.dp))
             Column {
-                if (user.name != null) {
-                    Text(text = user.name, style = MaterialTheme.typography.titleLarge)
+                user.name?.let {
+                    Text(text = it, style = MaterialTheme.typography.titleLarge)
                 }
                 Text(
                     text = user.login,
@@ -182,12 +192,12 @@ private fun UserHeader(user: User) {
                 )
             }
         }
-        if (user.bio != null) {
-            Text(text = user.bio, style = MaterialTheme.typography.bodyMedium)
+        user.bio?.let {
+            Text(text = it, style = MaterialTheme.typography.bodyMedium)
         }
-        if (user.location != null) {
+        user.location?.let {
             Text(
-                text = user.location,
+                text = it,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -225,9 +235,9 @@ private fun RepositoryItem(repo: Repository, onClick: () -> Unit) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        if (repo.description != null) {
+        repo.description?.let {
             Text(
-                text = repo.description,
+                text = it,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
@@ -235,9 +245,9 @@ private fun RepositoryItem(repo: Repository, onClick: () -> Unit) {
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (repo.language != null) {
+            repo.language?.let {
                 Text(
-                    text = repo.language,
+                    text = it,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -251,13 +261,67 @@ private fun RepositoryItem(repo: Repository, onClick: () -> Unit) {
     }
 }
 
+// ─── Previews ────────────────────────────────────────────────────────────────
+
+private val previewUser = User(
+    id = 1L,
+    login = "akexorcist",
+    name = "Akexorcist",
+    avatarUrl = "",
+    bio = "Android Developer @ Bangkok",
+    location = "Bangkok, Thailand",
+    blog = null,
+    publicRepos = 42,
+    followers = 1200,
+    following = 80,
+)
+
+private val previewRepo = Repository(
+    id = 1L,
+    name = "Github-Viewer",
+    fullName = "akexorcist/Github-Viewer",
+    ownerLogin = "akexorcist",
+    ownerAvatarUrl = "",
+    description = "A GitHub viewer app built with Kotlin Multiplatform and Jetpack Compose",
+    stars = 128,
+    forks = 24,
+    openIssues = 5,
+    watchers = 128,
+    language = "Kotlin",
+    topics = listOf("android", "kotlin", "compose", "kmp"),
+    licenseName = "Apache 2.0",
+    pushedAt = "2024-01-15T10:30:00Z",
+)
+
+@Preview(showBackground = true)
 @Composable
-private fun ErrorState(onRetry: () -> Unit, modifier: Modifier = Modifier) {
-    Box(modifier, contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Failed to load profile")
-            Spacer(Modifier.height(8.dp))
-            Button(onClick = onRetry) { Text("Retry") }
-        }
+private fun UserHeaderPreview() {
+    GithubViewerTheme {
+        UserHeader(user = previewUser)
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+private fun UserHeaderNoBioPreview() {
+    GithubViewerTheme {
+        UserHeader(user = previewUser.copy(name = null, bio = null, location = null))
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RepositoryItemPreview() {
+    GithubViewerTheme {
+        RepositoryItem(repo = previewRepo, onClick = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RepositoryItemNoDescriptionPreview() {
+    GithubViewerTheme {
+        RepositoryItem(repo = previewRepo.copy(description = null, language = null), onClick = {})
+    }
+}
+

@@ -3,6 +3,7 @@ package dev.akexorcist.githubviewer.presentation.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.akexorcist.githubviewer.core.common.AppError
+import dev.akexorcist.githubviewer.core.common.PAGE_SIZE
 import dev.akexorcist.githubviewer.core.common.Result
 import dev.akexorcist.githubviewer.data.repository.RepositoryRepository
 import dev.akexorcist.githubviewer.data.repository.UserRepository
@@ -32,12 +33,13 @@ class SearchViewModel(
 
     private val queryFlow = MutableStateFlow("")
     private var searchJob: Job? = null
+    private var lastSearchedQuery: String = ""
 
     init {
         queryFlow
             .debounce(500L)
             .filter { it.isNotBlank() }
-            .onEach { query -> executeSearch(query) }
+            .onEach { query -> if (query != lastSearchedQuery) executeSearch(query) }
             .launchIn(viewModelScope)
     }
 
@@ -52,6 +54,7 @@ class SearchViewModel(
     fun onSearchClick() {
         val query = _uiState.value.query
         if (query.isBlank()) return
+        lastSearchedQuery = query
         searchJob?.cancel()
         executeSearch(query)
     }
@@ -59,14 +62,14 @@ class SearchViewModel(
     fun onLoadMoreUsers() {
         val state = _uiState.value
         if (!state.users.hasNextPage || state.users.isLoadingMore) return
-        val nextPage = (state.users.items.size / 30) + 1
+        val nextPage = (state.users.items.size / PAGE_SIZE) + 1
         viewModelScope.launch { fetchUsers(state.query, nextPage, append = true) }
     }
 
     fun onLoadMoreRepositories() {
         val state = _uiState.value
         if (!state.repositories.hasNextPage || state.repositories.isLoadingMore) return
-        val nextPage = (state.repositories.items.size / 30) + 1
+        val nextPage = (state.repositories.items.size / PAGE_SIZE) + 1
         viewModelScope.launch { fetchRepositories(state.query, nextPage, append = true) }
     }
 

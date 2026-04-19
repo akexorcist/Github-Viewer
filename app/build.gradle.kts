@@ -40,7 +40,7 @@ android {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 dependencies {
@@ -55,6 +55,7 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.extended)
     implementation(libs.androidx.activity.compose)
     debugImplementation(libs.compose.ui.tooling)
 
@@ -71,6 +72,9 @@ dependencies {
     // Image
     implementation(libs.coil.compose)
     implementation(libs.coil.network.ktor)
+
+    // Room
+    implementation(libs.room.runtime)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.core)

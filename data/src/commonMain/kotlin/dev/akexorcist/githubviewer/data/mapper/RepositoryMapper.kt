@@ -4,8 +4,6 @@ import dev.akexorcist.githubviewer.core.database.entity.RepositoryEntity
 import dev.akexorcist.githubviewer.core.network.dto.RepositoryDto
 import dev.akexorcist.githubviewer.data.model.Repository
 
-private const val TOPICS_SEPARATOR = ","
-
 fun RepositoryDto.toEntity(cachedAt: Long): RepositoryEntity = RepositoryEntity(
     id = id,
     name = name,
@@ -18,7 +16,7 @@ fun RepositoryDto.toEntity(cachedAt: Long): RepositoryEntity = RepositoryEntity(
     openIssues = openIssues,
     watchers = watchers,
     language = language,
-    topics = topics.joinToString(TOPICS_SEPARATOR),
+    topics = topics,
     licenseName = license?.name,
     pushedAt = pushedAt,
     cachedAt = cachedAt,
@@ -36,7 +34,7 @@ fun RepositoryEntity.toDomain(): Repository = Repository(
     openIssues = openIssues,
     watchers = watchers,
     language = language,
-    topics = topics.split(TOPICS_SEPARATOR).filter { it.isNotBlank() },
+    topics = topics,
     licenseName = licenseName,
     pushedAt = pushedAt,
 )

@@ -11,6 +11,6 @@ data class RepositoryDetailUiState(
     val error: AppError? = null,
 )
 
-sealed class RepositoryDetailSnackbarEvent {
-    data object NoInternet : RepositoryDetailSnackbarEvent()
+sealed interface RepositoryDetailSnackbarEvent {
+    data object NoInternet : RepositoryDetailSnackbarEvent
 }

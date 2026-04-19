@@ -3,7 +3,6 @@ package dev.akexorcist.githubviewer.presentation.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.akexorcist.githubviewer.core.common.AppError
-import dev.akexorcist.githubviewer.core.common.PageResult
 import dev.akexorcist.githubviewer.core.common.PagingState
 import dev.akexorcist.githubviewer.core.common.Result
 import dev.akexorcist.githubviewer.data.model.Repository
@@ -76,9 +75,13 @@ class UserProfileViewModel(
                 when (result) {
                     is Result.Success -> {
                         _uiState.update { state ->
-                            val pageResult: PageResult<Repository> = result.data
+                            val pageResult = result.data
                             val updated = if (append) state.repositories.appendPage(pageResult)
-                            else PagingState<Repository>().appendPage(pageResult)
+                            else PagingState(
+                                items = pageResult.items,
+                                currentPage = pageResult.page,
+                                hasNextPage = pageResult.hasNextPage,
+                            )
                             state.copy(repositories = updated)
                         }
                     }

@@ -36,15 +36,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import dev.akexorcist.githubviewer.R
 import dev.akexorcist.githubviewer.data.model.Repository
 import dev.akexorcist.githubviewer.data.model.SearchUserItem
 import dev.akexorcist.githubviewer.presentation.search.SearchSnackbarEvent
 import dev.akexorcist.githubviewer.presentation.search.SearchViewModel
 import dev.akexorcist.githubviewer.presentation.search.SectionState
+import dev.akexorcist.githubviewer.ui.theme.GithubViewerTheme
 
 @Composable
 fun SearchScreen(
@@ -54,12 +58,13 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val noInternetMessage = stringResource(R.string.error_no_internet_connection)
 
     LaunchedEffect(Unit) {
         viewModel.snackbarEvent.collect { event ->
             when (event) {
                 is SearchSnackbarEvent.NoInternet ->
-                    snackbarHostState.showSnackbar("No internet connection")
+                    snackbarHostState.showSnackbar(noInternetMessage)
             }
         }
     }
@@ -270,9 +275,9 @@ private fun RepositoryResultItem(repo: Repository, onClick: () -> Unit) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        if (repo.description != null) {
+        repo.description?.let {
             Text(
-                text = repo.description,
+                text = it,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
@@ -282,9 +287,9 @@ private fun RepositoryResultItem(repo: Repository, onClick: () -> Unit) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (repo.language != null) {
+            repo.language?.let {
                 Text(
-                    text = repo.language,
+                    text = it,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -295,5 +300,111 @@ private fun RepositoryResultItem(repo: Repository, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+// ─── Previews ────────────────────────────────────────────────────────────────
+
+private val previewSearchUser = SearchUserItem(
+    id = 1L,
+    login = "akexorcist",
+    name = "Akexorcist",
+    avatarUrl = "",
+)
+
+private val previewSearchRepo = Repository(
+    id = 1L,
+    name = "Github-Viewer",
+    fullName = "akexorcist/Github-Viewer",
+    ownerLogin = "akexorcist",
+    ownerAvatarUrl = "",
+    description = "A GitHub viewer app built with Kotlin Multiplatform and Jetpack Compose",
+    stars = 128,
+    forks = 24,
+    openIssues = 5,
+    watchers = 128,
+    language = "Kotlin",
+    topics = listOf("android", "kotlin", "compose"),
+    licenseName = "Apache 2.0",
+    pushedAt = "2024-01-15T10:30:00Z",
+)
+
+@Preview(showBackground = true)
+@Composable
+private fun SectionHeaderPreview() {
+    GithubViewerTheme {
+        SectionHeader("Users")
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SectionLoaderPreview() {
+    GithubViewerTheme {
+        SectionLoader()
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SectionEmptyPreview() {
+    GithubViewerTheme {
+        SectionEmpty("No users found")
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SectionErrorPreview() {
+    GithubViewerTheme {
+        SectionError(onRetry = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LoadMoreButtonPreview() {
+    GithubViewerTheme {
+        LoadMoreButton(isLoading = false, onClick = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LoadMoreButtonLoadingPreview() {
+    GithubViewerTheme {
+        LoadMoreButton(isLoading = true, onClick = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun UserResultItemPreview() {
+    GithubViewerTheme {
+        UserResultItem(user = previewSearchUser, onClick = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun UserResultItemNoNamePreview() {
+    GithubViewerTheme {
+        UserResultItem(user = previewSearchUser.copy(name = null), onClick = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RepositoryResultItemPreview() {
+    GithubViewerTheme {
+        RepositoryResultItem(repo = previewSearchRepo, onClick = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RepositoryResultItemNoDescriptionPreview() {
+    GithubViewerTheme {
+        RepositoryResultItem(repo = previewSearchRepo.copy(description = null, language = null), onClick = {})
     }
 }

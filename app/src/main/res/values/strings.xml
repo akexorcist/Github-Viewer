@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">GitHub Viewer</string>
+    <string name="error_no_internet_connection">No internet connection</string>
+    <string name="error_failed_to_load_profile">Failed to load profile</string>
+    <string name="error_failed_to_load_repository">Failed to load repository</string>
 </resources>

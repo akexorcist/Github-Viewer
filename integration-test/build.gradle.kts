@@ -17,7 +17,11 @@ kotlin {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.turbine)
+                implementation(libs.kotest.assertions.core)
                 implementation(libs.koin.core)
+                implementation(libs.androidx.lifecycle.viewmodel)
+                implementation(libs.room.runtime)
+                implementation(libs.sqlite.bundled)
             }
         }
     }

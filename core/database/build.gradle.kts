@@ -15,6 +15,11 @@ kotlin {
             implementation(libs.room.runtime)
             implementation(libs.kotlinx.coroutines.core)
         }
+        val desktopMain by getting {
+            dependencies {
+                implementation(libs.sqlite.bundled)
+            }
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
