@@ -12,4 +12,5 @@ fun createDatabase(context: Context): AppDatabase =
     )
         .setDriver(AndroidSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
+        .addMigrations(AppDatabase.MIGRATION_1_2)
         .build()

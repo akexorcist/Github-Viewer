@@ -16,6 +16,8 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
@@ -50,6 +52,18 @@ class GitHubApiService(private val client: HttpClient) {
 
     suspend fun getRepository(owner: String, repo: String): RepositoryDto =
         client.get("$BASE_URL/repos/$owner/$repo").bodyOrThrow()
+
+    suspend fun getRepositoryReadme(owner: String, repo: String): String {
+        val response = client.get("$BASE_URL/repos/$owner/$repo/readme") {
+            header(HttpHeaders.Accept, "application/vnd.github.v3.raw")
+        }
+        checkRateLimit(response)
+        if (response.status == HttpStatusCode.NotFound) return ""
+        if (!response.status.isSuccess()) throw AppException(
+            AppError.HttpError(response.status.value, response.status.description)
+        )
+        return response.bodyAsText()
+    }
 
     private suspend inline fun <reified T> HttpResponse.bodyOrThrow(): T {
         checkRateLimit(this)

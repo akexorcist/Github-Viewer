@@ -18,6 +18,7 @@ interface RepositoryRepository {
     fun getRepository(owner: String, repo: String, forceRefresh: Boolean = false): Flow<Result<Repository>>
     fun getUserRepositories(login: String, page: Int, forceRefresh: Boolean = false): Flow<Result<PageResult<Repository>>>
     suspend fun searchRepositories(query: String, page: Int): Result<PageResult<Repository>>
+    fun getReadme(owner: String, repo: String, forceRefresh: Boolean = false): Flow<Result<String>>
 }
 
 class RepositoryRepositoryImpl(
@@ -78,6 +79,32 @@ class RepositoryRepositoryImpl(
                 .onFailure { throwable ->
                     if (throwable is CancellationException) throw throwable
                     if (cached.isEmpty()) emit(Result.Error(throwable.toAppError()))
+                }
+        }
+    }
+
+    override fun getReadme(owner: String, repo: String, forceRefresh: Boolean): Flow<Result<String>> = flow {
+        val fullName = "$owner/$repo"
+        val cached = repositoryDao.getRepositoryByFullName(fullName)
+        val cachedReadme = cached?.readmeContent
+
+        if (cachedReadme != null) {
+            emit(Result.Success(cachedReadme))
+        }
+
+        if (forceRefresh || cachedReadme == null) {
+            runCatching { apiService.getRepositoryReadme(owner, repo) }
+                .onSuccess { content ->
+                    if (cached != null) {
+                        repositoryDao.updateReadmeContent(fullName, content)
+                    }
+                    emit(Result.Success(content))
+                }
+                .onFailure { throwable ->
+                    if (throwable is CancellationException) throw throwable
+                    if (cachedReadme == null) {
+                        emit(Result.Error(throwable.toAppError()))
+                    }
                 }
         }
     }

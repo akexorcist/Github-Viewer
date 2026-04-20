@@ -73,6 +73,10 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.ktor)
 
+    // Markdown
+    implementation(libs.markdown.renderer.m3)
+    implementation(libs.markdown.renderer.coil3)
+
     // Room
     implementation(libs.room.runtime)
 

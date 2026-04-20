@@ -33,12 +33,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.mikepenz.markdown.coil3.Coil3ImageTransformerImpl
+import com.mikepenz.markdown.m3.Markdown
 import dev.akexorcist.githubviewer.R
 import dev.akexorcist.githubviewer.data.model.Repository
 import dev.akexorcist.githubviewer.presentation.repository.RepositoryDetailSnackbarEvent
+import dev.akexorcist.githubviewer.presentation.repository.RepositoryDetailUiState
 import dev.akexorcist.githubviewer.presentation.repository.RepositoryDetailViewModel
 import dev.akexorcist.githubviewer.ui.component.LastUpdatedText
 import dev.akexorcist.githubviewer.ui.component.ScreenErrorState
@@ -75,12 +79,12 @@ fun RepositoryDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.content_description_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = viewModel::onRefresh) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.content_description_refresh))
                     }
                 },
             )
@@ -104,10 +108,12 @@ fun RepositoryDetailScreen(
             )
 
             uiState.repository != null -> {
-                val repository = uiState.repository ?: return@Scaffold
+                val repository = checkNotNull(uiState.repository)
                 RepositoryDetail(
                     repository = repository,
                     lastUpdatedAt = uiState.lastUpdatedAt,
+                    readmeContent = uiState.readmeContent,
+                    isReadmeLoading = uiState.isReadmeLoading,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding),
@@ -122,6 +128,8 @@ fun RepositoryDetailScreen(
 private fun RepositoryDetail(
     repository: Repository,
     lastUpdatedAt: Instant?,
+    readmeContent: String?,
+    isReadmeLoading: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.verticalScroll(rememberScrollState())) {
@@ -184,6 +192,54 @@ private fun RepositoryDetail(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
+
+        HorizontalDivider()
+        ReadmeSection(
+            readmeContent = readmeContent,
+            isReadmeLoading = isReadmeLoading,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun ReadmeSection(
+    readmeContent: String?,
+    isReadmeLoading: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Text(
+            text = stringResource(R.string.readme_section_title),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        when {
+            isReadmeLoading && readmeContent == null -> Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp)
+                    .testTag("readme_loading"),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+            readmeContent == "" -> Text(
+                text = stringResource(R.string.readme_not_available),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .testTag("readme_empty"),
+            )
+            readmeContent != null -> Markdown(
+                content = readmeContent,
+                imageTransformer = Coil3ImageTransformerImpl,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .testTag("readme_content"),
+            )
+        }
     }
 }
 
@@ -237,6 +293,8 @@ private fun RepositoryDetailPreview() {
         RepositoryDetail(
             repository = previewRepository,
             lastUpdatedAt = null,
+            readmeContent = "# Github Viewer\n\nA GitHub viewer app built with **Kotlin Multiplatform**.",
+            isReadmeLoading = false,
             modifier = Modifier.fillMaxSize(),
         )
     }
@@ -249,6 +307,8 @@ private fun RepositoryDetailNoTopicsPreview() {
         RepositoryDetail(
             repository = previewRepository.copy(topics = emptyList(), description = null),
             lastUpdatedAt = null,
+            readmeContent = null,
+            isReadmeLoading = true,
             modifier = Modifier.fillMaxSize(),
         )
     }

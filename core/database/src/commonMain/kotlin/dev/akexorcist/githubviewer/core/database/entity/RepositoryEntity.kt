@@ -20,4 +20,5 @@ data class RepositoryEntity(
     val licenseName: String?,
     val pushedAt: String?,
     val cachedAt: Long,
+    val readmeContent: String? = null,
 )

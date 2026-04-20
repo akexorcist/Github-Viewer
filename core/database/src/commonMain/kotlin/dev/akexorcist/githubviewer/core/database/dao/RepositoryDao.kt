@@ -18,4 +18,7 @@ interface RepositoryDao {
 
     @Upsert
     suspend fun upsertRepositories(repositories: List<RepositoryEntity>)
+
+    @Query("UPDATE repositories SET readmeContent = :content WHERE fullName = :fullName")
+    suspend fun updateReadmeContent(fullName: String, content: String)
 }

@@ -124,6 +124,57 @@ class RepositoryDetailViewModelIntegrationTest {
         }
     }
 
+    // ─── README loading ──────────────────────────────────────────────────────
+
+    @Test
+    fun `init loads readme content after repository loads`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            var state = awaitItem()
+            while (state.readmeContent == null && state.error == null) {
+                state = awaitItem()
+            }
+            state.readmeContent.shouldNotBeNull()
+            state.error.shouldBeNull()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `init sets isReadmeLoading to false after readme loads`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            var state = awaitItem()
+            while (state.readmeContent == null && state.error == null) {
+                state = awaitItem()
+            }
+            state.isReadmeLoading.shouldBeFalse()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `onRefresh updates readme content`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.uiState.test(timeout = 15.seconds) {
+            var state = awaitItem()
+            while (state.readmeContent == null && state.error == null) {
+                state = awaitItem()
+            }
+            val firstReadme = state.readmeContent.shouldNotBeNull()
+
+            viewModel.onRefresh()
+
+            // After refresh, readme must still be non-null (cache serves first, then network update)
+            var refreshed = awaitItem()
+            while (refreshed.isReadmeLoading) {
+                refreshed = awaitItem()
+            }
+            refreshed.readmeContent.shouldNotBeNull()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     @Test
     fun `onRefresh does not clear the loaded repository while re-fetching`() = runTest {
         val viewModel = createViewModel()

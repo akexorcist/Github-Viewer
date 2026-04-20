@@ -9,6 +9,8 @@ data class RepositoryDetailUiState(
     val isLoading: Boolean = false,
     val lastUpdatedAt: Instant? = null,
     val error: AppError? = null,
+    val readmeContent: String? = null,
+    val isReadmeLoading: Boolean = false,
 )
 
 sealed interface RepositoryDetailSnackbarEvent {

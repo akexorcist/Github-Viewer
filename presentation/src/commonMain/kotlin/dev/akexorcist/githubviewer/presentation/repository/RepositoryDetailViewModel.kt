@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlin.time.Clock
 
 class RepositoryDetailViewModel(
@@ -35,29 +34,39 @@ class RepositoryDetailViewModel(
     fun onRefresh() = loadRepository(forceRefresh = true)
 
     private fun loadRepository(forceRefresh: Boolean) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = it.repository == null, error = null) }
+        _uiState.update { it.copy(isLoading = it.repository == null, error = null) }
 
-            repositoryRepository.getRepository(owner, repo, forceRefresh)
-                .onEach { result ->
-                    when (result) {
-                        is Result.Success -> _uiState.update {
-                            it.copy(
-                                repository = result.data,
-                                isLoading = false,
-                                lastUpdatedAt = Clock.System.now(),
-                            )
-                        }
-                        is Result.Error -> {
-                            if (result.error is AppError.NetworkError) {
-                                _snackbarEvent.trySend(RepositoryDetailSnackbarEvent.NoInternet)
-                            } else {
-                                _uiState.update { it.copy(error = result.error, isLoading = false) }
-                            }
+        repositoryRepository.getRepository(owner, repo, forceRefresh)
+            .onEach { result ->
+                when (result) {
+                    is Result.Success -> _uiState.update {
+                        it.copy(
+                            repository = result.data,
+                            isLoading = false,
+                            lastUpdatedAt = Clock.System.now(),
+                        )
+                    }
+                    is Result.Error -> {
+                        if (result.error is AppError.NetworkError) {
+                            _snackbarEvent.trySend(RepositoryDetailSnackbarEvent.NoInternet)
+                        } else {
+                            _uiState.update { it.copy(error = result.error, isLoading = false) }
                         }
                     }
                 }
-                .launchIn(this)
-        }
+            }
+            .launchIn(viewModelScope)
+
+        _uiState.update { it.copy(isReadmeLoading = true) }
+        repositoryRepository.getReadme(owner, repo, forceRefresh)
+            .onEach { result ->
+                when (result) {
+                    is Result.Success -> _uiState.update {
+                        it.copy(readmeContent = result.data, isReadmeLoading = false)
+                    }
+                    is Result.Error -> _uiState.update { it.copy(isReadmeLoading = false) }
+                }
+            }
+            .launchIn(viewModelScope)
     }
 }
