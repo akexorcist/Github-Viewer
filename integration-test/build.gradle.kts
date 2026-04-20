@@ -35,4 +35,8 @@ tasks.named<Test>("desktopTest") {
     // Run from the root project directory so that File("integration-test/.env")
     // in TestEnvironment resolves correctly.
     workingDir = rootProject.projectDir
+    // Show HTTP request/response logs from the test process on the console.
+    testLogging {
+        showStandardStreams = true
+    }
 }

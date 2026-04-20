@@ -10,6 +10,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.get
@@ -86,7 +87,7 @@ class GitHubApiService(private val client: HttpClient) {
     companion object {
         private const val BASE_URL = "https://api.github.com"
 
-        fun create(token: String? = null): GitHubApiService = GitHubApiService(
+        fun create(token: String? = null, enableLogging: Boolean = false): GitHubApiService = GitHubApiService(
             createHttpClient {
                 install(ContentNegotiation) {
                     json(Json {
@@ -95,7 +96,10 @@ class GitHubApiService(private val client: HttpClient) {
                     })
                 }
                 install(Logging) {
-                    level = LogLevel.NONE
+                    logger = object : Logger {
+                        override fun log(message: String) = println(message)
+                    }
+                    level = if (enableLogging) LogLevel.INFO else LogLevel.NONE
                 }
                 defaultRequest {
                     header("Accept", "application/vnd.github+json")

@@ -17,7 +17,12 @@ object TestDependencies {
     // Passes GITHUB_TOKEN when available to raise rate limits:
     //   unauthenticated: 60 req/hour core, 10 req/min search
     //   authenticated:  5000 req/hour core, 30 req/min search
-    fun createApiService(): GitHubApiService = GitHubApiService.create(TestEnvironment.githubToken)
+    // enableLogging=true prints each request URL and response status to stdout
+    // so test runs can be verified against the real GitHub API calls made.
+    fun createApiService(): GitHubApiService = GitHubApiService.create(
+        token = TestEnvironment.githubToken,
+        enableLogging = true,
+    )
 
     fun createUserRepository(
         apiService: GitHubApiService = createApiService(),
