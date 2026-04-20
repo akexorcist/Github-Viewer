@@ -9,6 +9,7 @@ import dev.akexorcist.githubviewer.core.network.dto.UserDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import co.touchlab.kermit.Logger as KermitLogger
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
@@ -97,7 +98,8 @@ class GitHubApiService(private val client: HttpClient) {
                 }
                 install(Logging) {
                     logger = object : Logger {
-                        override fun log(message: String) = println(message)
+                        private val kermit = KermitLogger.withTag("HttpClient")
+                        override fun log(message: String) = kermit.d { message }
                     }
                     level = if (enableLogging) LogLevel.INFO else LogLevel.NONE
                 }
