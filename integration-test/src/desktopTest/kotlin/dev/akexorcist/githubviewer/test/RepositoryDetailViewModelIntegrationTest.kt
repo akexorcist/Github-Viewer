@@ -131,7 +131,7 @@ class RepositoryDetailViewModelIntegrationTest {
         val viewModel = createViewModel()
         viewModel.uiState.test {
             var state = awaitItem()
-            while (state.readmeContent == null && state.error == null) {
+            while (state.readmeContent == null && state.isReadmeLoading && state.error == null) {
                 state = awaitItem()
             }
             state.readmeContent.shouldNotBeNull()
@@ -145,7 +145,7 @@ class RepositoryDetailViewModelIntegrationTest {
         val viewModel = createViewModel()
         viewModel.uiState.test {
             var state = awaitItem()
-            while (state.readmeContent == null && state.error == null) {
+            while (state.readmeContent == null && state.isReadmeLoading && state.error == null) {
                 state = awaitItem()
             }
             state.isReadmeLoading.shouldBeFalse()
@@ -158,7 +158,7 @@ class RepositoryDetailViewModelIntegrationTest {
         val viewModel = createViewModel()
         viewModel.uiState.test(timeout = 15.seconds) {
             var state = awaitItem()
-            while (state.readmeContent == null && state.error == null) {
+            while (state.readmeContent == null && state.isReadmeLoading && state.error == null) {
                 state = awaitItem()
             }
             val firstReadme = state.readmeContent.shouldNotBeNull()

@@ -75,6 +75,7 @@ class GitHubApiService(private val client: HttpClient) {
     }
 
     private fun checkRateLimit(response: HttpResponse) {
+        if (response.status.isSuccess()) return
         val remaining = response.headers["X-RateLimit-Remaining"]?.toIntOrNull()
         val resetAt = response.headers["X-RateLimit-Reset"]?.toLongOrNull()
         if (remaining == 0 && resetAt != null) {

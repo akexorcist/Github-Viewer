@@ -35,39 +35,41 @@
 
 ## Decisions Log
 
-*(Empty — populate as agents make decisions)*
+### App renamed from `Github-Viewer` to `github-viewer` (2026-04-20)
+- GitHub repo and app name changed to all-lowercase `github-viewer`
+- Updated `integration-test/.env`: `GITHUB_TEST_REPO=github-viewer`
+- Updated `TestEnvironment.kt` default fallback to `"github-viewer"`
+- Note: GitHub's API redirects the old name to the new one, but the JSON response `name` field will reflect the canonical (lowercase) name, so tests asserting `repo.name shouldBe testRepo` require the correct casing in `.env`
 
 ---
 
 ## Known Issues
 
-### [HIGH] Missing `CancellationException` re-throw in `flow { runCatching }` lambdas
-- `RepositoryRepository.getRepository` and `getUserRepositories` call `runCatching { apiService.xxx() }` inside `flow { }` without re-throwing `CancellationException`. A cancelled coroutine will emit `Result.Error` instead of completing silently.
-- Files: `data/src/commonMain/.../repository/RepositoryRepository.kt` — `onFailure` lambdas
+### [HIGH] Missing `CancellationException` re-throw in `flow { runCatching }` lambdas — RESOLVED
+- Fixed: all `onFailure` lambdas in `RepositoryRepository` and `UserRepository` now re-throw `CancellationException`.
 
-### [MEDIUM] `getUserRepositories` has a silent no-emission path on first run
-- When `page == 1`, `forceRefresh == false`, and the Room cache is empty, the flow emits nothing. The ViewModel will hang in `isLoading = true` forever.
-- File: `data/src/commonMain/.../repository/RepositoryRepository.kt` lines 48-82
+### [MEDIUM] `getUserRepositories` has a silent no-emission path on first run — RESOLVED
+- Fixed: condition `if (forceRefresh || page > 1 || cached.isEmpty())` now always falls through to network when cache is empty.
 
-### [MEDIUM] `getUserRepositories` network error unconditionally overwrites cache
-- `onFailure` in `getUserRepositories` always emits `Result.Error` even when a cached result was already emitted. This causes the UI to show an error screen over a previously-shown cached list.
-- File: `data/src/commonMain/.../repository/RepositoryRepository.kt` lines 78-80
+### [MEDIUM] `getUserRepositories` network error unconditionally overwrites cache — RESOLVED
+- Fixed: `onFailure` only emits `Result.Error` when `cached.isEmpty()`, preserving previously-emitted cached data.
 
 ### [MEDIUM] Magic constant `30` in `SearchViewModel` instead of shared `PAGE_SIZE`
 - `nextPage` calculation uses literal `30` instead of `PAGE_SIZE` from `Pagination.kt`.
 - File: `presentation/src/commonMain/.../search/SearchViewModel.kt` lines 62, 69
 
-### [MEDIUM] `!!` on StateFlow-backed nullable after `when` branch check
-- `uiState.user!!` and `uiState.repository!!` used inside `when` branches. These should be snapshotted to a local val first.
-- Files: `UserProfileScreen.kt:107`, `RepositoryDetailScreen.kt:109`
+### [MEDIUM] StateFlow-backed nullable snapshot in `when` branch — partially fixed
+- `uiState.user!!` still used in `UserProfileScreen.kt:107`. `RepositoryDetailScreen.kt` fixed to use `checkNotNull()`.
+- Files: `UserProfileScreen.kt:107` (open), `RepositoryDetailScreen.kt` (fixed in README review pass)
 
 ### [MEDIUM] Hardcoded string `"No internet connection"` duplicated across 3 screen files
 - Should be a shared string resource or constant.
-- Files: `UserProfileScreen.kt`, `RepositoryDetailScreen.kt`, `SearchScreen.kt`
+- Files: `UserProfileScreen.kt`, `SearchScreen.kt` (still open); `RepositoryDetailScreen.kt` partially addressed (content descriptions and README strings moved to resources in README review pass)
 
-### [MEDIUM] `topics` stored as CSV string in `RepositoryEntity` instead of using Room `TypeConverter`
-- Latent bug: topic names containing a comma would be split incorrectly.
-- Files: `core/database/src/commonMain/.../entity/RepositoryEntity.kt`, `data/src/commonMain/.../mapper/RepositoryMapper.kt`
+### [MEDIUM] `topics` stored as pipe-delimited string in `RepositoryEntity` using `StringListConverter`
+- Previous CSV bug (comma delimiter) was fixed: `StringListConverter` now uses `|` as delimiter.
+- Remaining concern: delimiter choice is not documented; a topic containing `|` would still split incorrectly.
+- Files: `core/database/src/commonMain/.../converter/StringListConverter.kt`
 
 ### [MEDIUM] Debounce + `onSearchClick` double-search race
 - Explicit search tap fires `executeSearch`, then 500ms later the debounce fires again, replacing results.
@@ -76,20 +78,36 @@
 ### [LOW] `sealed class` used for stateless event hierarchies — prefer `sealed interface`
 - `UserProfileSnackbarEvent`, `RepositoryDetailSnackbarEvent`, `SearchSnackbarEvent` are `sealed class` with only `data object` members.
 
-### [LOW] `Arrangement.spacedBy(0.dp)` no-op in `RepositoryDetailScreen`
-- File: `app/src/main/kotlin/.../repository/RepositoryDetailScreen.kt:128`
+### [LOW] `Arrangement.spacedBy(0.dp)` no-op in `RepositoryDetailScreen` — RESOLVED
+- Was at line 128; that line no longer exists (layout restructured in README review pass). No longer applicable.
 
 ### [LOW] `SCREAMING_SNAKE_CASE` naming for non-const val `TRACKED_KEYS` in `TestEnvironment`
 - Should be `trackedKeys` (camelCase).
 
-### [LOW] `toAppError()` extension defined in `UserRepository.kt` but used from `RepositoryRepository.kt`
-- Should move to a shared `data/util/` or `core/common/` location.
+### [LOW] `toAppError()` extension defined in `UserRepository.kt` but used from `RepositoryRepository.kt` — RESOLVED
+- Moved to `data/src/commonMain/.../data/util/ThrowableExt.kt` in README review pass.
 
-### [LOW] Unused `getRepository(id: Long)` DAO method in `RepositoryDao`
-- File: `core/database/src/commonMain/.../dao/RepositoryDao.kt:13-14`
+### [LOW] Unused `getRepository(id: Long)` DAO method in `RepositoryDao` — RESOLVED
+- Replaced by `getRepositoryByFullName(fullName: String)` in README review pass.
 
 ### [LOW] `!!` used in integration tests after `shouldNotBeNull()` — should capture return value
 - Files: `UserProfileViewModelIntegrationTest.kt`, `RepositoryDetailViewModelIntegrationTest.kt`
+
+### [LOW] `checkRateLimit` false-positive on successful responses — RESOLVED
+- Old code threw `RateLimitError` whenever `X-RateLimit-Remaining == 0`, including on 2xx responses (last successful request before limit). Valid data was discarded.
+- Fixed: `if (response.status.isSuccess()) return` guard added. Rate limit check now only fires on non-2xx responses.
+- File: `core/network/src/commonMain/.../GitHubApiService.kt`
+
+### [LOW] Integration test README drain-loop never terminates on README failure — RESOLVED
+- `RepositoryDetailViewModel` sets only `isReadmeLoading = false` on README errors; it does NOT set `state.error`. Tests using `while (readmeContent == null && error == null)` would loop forever if README failed.
+- Fixed: loop condition changed to `while (readmeContent == null && isReadmeLoading && error == null)` in 3 tests.
+- File: `integration-test/.../RepositoryDetailViewModelIntegrationTest.kt`
+
+### [LOW] `getReadme` silent cache miss when repository row does not yet exist in DB — RESOLVED
+- Fixed in README review pass: write is now guarded by `if (cached != null)`.
+
+### [LOW] `jvmToolchain(21)` in `app/build.gradle.kts` violates project constraint of JVM 17 — RESOLVED
+- Fixed in README review pass to `jvmToolchain(17)`; note machine only has JDK 21 so this may need to be reverted in practice (see memory).
 
 ---
 

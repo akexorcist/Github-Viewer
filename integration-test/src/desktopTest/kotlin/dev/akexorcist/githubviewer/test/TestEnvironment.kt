@@ -6,7 +6,7 @@ object TestEnvironment {
     private val env: Map<String, String> by lazy { loadEnv() }
 
     val testUser: String get() = env["GITHUB_TEST_USER"] ?: "akexorcist"
-    val testRepo: String get() = env["GITHUB_TEST_REPO"] ?: "Github-Viewer"
+    val testRepo: String get() = env["GITHUB_TEST_REPO"] ?: "github-viewer"
     val testRepoOwner: String get() = env["GITHUB_TEST_REPO_OWNER"] ?: "akexorcist"
 
     // Optional GitHub personal access token. When set, increases rate limits from
