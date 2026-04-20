@@ -32,4 +32,7 @@ kotlin {
 tasks.named<Test>("desktopTest") {
     description = "Runs integration tests against the real GitHub API."
     group = "verification"
+    // Run from the root project directory so that File("integration-test/.env")
+    // in TestEnvironment resolves correctly.
+    workingDir = rootProject.projectDir
 }
