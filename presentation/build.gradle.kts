@@ -14,7 +14,6 @@ kotlin {
             implementation(projects.data)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.koin.core)
             implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {

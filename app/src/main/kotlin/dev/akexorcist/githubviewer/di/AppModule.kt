@@ -1,5 +1,6 @@
 package dev.akexorcist.githubviewer.di
 
+import dev.akexorcist.githubviewer.core.database.AppDatabase
 import dev.akexorcist.githubviewer.core.database.createDatabase
 import dev.akexorcist.githubviewer.data.di.dataModule
 import dev.akexorcist.githubviewer.presentation.repository.RepositoryDetailViewModel
@@ -11,8 +12,8 @@ import org.koin.dsl.module
 
 val databaseModule = module {
     single { createDatabase(androidContext()) }
-    single { get<dev.akexorcist.githubviewer.core.database.AppDatabase>().userDao() }
-    single { get<dev.akexorcist.githubviewer.core.database.AppDatabase>().repositoryDao() }
+    single { get<AppDatabase>().userDao() }
+    single { get<AppDatabase>().repositoryDao() }
 }
 
 val presentationModule = module {
