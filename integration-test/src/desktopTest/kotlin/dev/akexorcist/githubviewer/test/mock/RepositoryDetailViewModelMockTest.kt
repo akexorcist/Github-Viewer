@@ -263,6 +263,28 @@ class RepositoryDetailViewModelMockTest {
     // ─── Refresh ──────────────────────────────────────────────────────────────
 
     @Test
+    fun `refresh updates lastUpdatedAt with a newer timestamp`() = runTest(timeout = 15.seconds) {
+        val viewModel = createViewModel(
+            repoRepo = FakeRepositoryRepository(
+                getRepositoryImpl = { _, _, _ -> successFlow(testRepository()) },
+                getReadmeImpl = { _, _, _ -> successFlow("") },
+            ),
+        )
+        viewModel.uiState.test {
+            var state = awaitItem()
+            while (state.lastUpdatedAt == null && state.error == null) state = awaitItem()
+            val firstUpdatedAt = state.lastUpdatedAt.shouldNotBeNull()
+
+            viewModel.onRefresh()
+            var refreshed = awaitItem()
+            while (refreshed.lastUpdatedAt == firstUpdatedAt) refreshed = awaitItem()
+            refreshed.lastUpdatedAt.shouldNotBeNull()
+            refreshed.repository.shouldNotBeNull()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `refresh does not clear repository during re-fetch`() = runTest(timeout = 15.seconds) {
         val repo = testRepository()
         val viewModel = createViewModel(
