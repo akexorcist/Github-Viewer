@@ -105,14 +105,15 @@ Write **both** integration test files in `:integration-test` (`desktopTest`) dir
 
 **File 1 — Real HTTP test:** `XxxViewModelIntegrationTest.kt` in `integration-test/src/desktopTest/`
 - Uses real Ktor CIO client + real Room (`BundledSQLiteDriver`) — no mocks
+- Runs on the JVM desktop target in ~15 seconds with no Android emulator — **this is the fast feedback loop during active development**
 - Share a single `companion object` database per test class to minimise API calls
-- One test per happy-path and cache-first spec row — the cases that require a real network round-trip to verify
+- Covers the happy path and cache-first behaviour that require a real network round-trip to verify
 
 **File 2 — Mock test:** `mock/XxxViewModelMockTest.kt` in `integration-test/src/desktopTest/mock/`
 - Mocks at the repository layer via `FakeXxxRepository` — no HTTP client, no Room DB
-- Must be a **strict superset** of File 1: every case in `XxxViewModelIntegrationTest.kt` must have a counterpart here
+- **This is the requirement and code-change coverage guarantee** — every requirement and every code change to a feature must be covered here; if a requirement is not in a mock test, it is not verified
+- Must cover the same cases as File 1: every test in `XxxViewModelIntegrationTest.kt` must have a counterpart here
 - Must additionally cover all error states, edge cases, and concurrency scenarios that are impractical with a real HTTP client: `NetworkError`, `HttpError`, `RateLimitError`, timeout, cancellation mid-flight, rapid re-trigger, empty response, cache-first sequencing
-- This is the fast feedback loop — developers and agents run this layer continuously during implementation
 
 Use Turbine drain loops — not fixed `awaitItem()` counts. Apply extended Turbine timeouts (`timeout = 15.seconds`) for tests that trigger multiple concurrent coroutines.
 
@@ -263,7 +264,7 @@ Two test files are required for every feature ViewModel. Both are derived from t
 
 Path: `integration-test/src/desktopTest/kotlin/.../XxxViewModelIntegrationTest.kt`
 
-Uses a real Ktor CIO client and real Room DB. Validates the full stack end-to-end.
+Uses a real Ktor CIO client and real Room DB. Runs on the JVM desktop target in ~15 seconds with no Android emulator. **This is the fast feedback loop during active development** — run this suite continuously while implementing to verify the full stack is wired correctly.
 
 **Coverage requirements:**
 - Happy path: correct content state is emitted after a successful load
@@ -293,8 +294,10 @@ Path: `integration-test/src/desktopTest/kotlin/.../mock/XxxViewModelMockTest.kt`
 
 Mocks at the repository layer via `FakeXxxRepository`. No HTTP client, no Room DB.
 
-**Superset rule — mock tests must cover everything in File 1, plus:**
-- Every case in `XxxViewModelIntegrationTest.kt` must have a counterpart here
+**This is the requirement and code-change coverage guarantee.** Every requirement — whether new or changed — must be covered here. Every code change to a ViewModel or repository must have a corresponding mock test that would fail if the change broke the requirement. If a requirement has no mock test, it is unverified.
+
+**Coverage rule — mock tests must cover every case in File 1, plus:**
+- Every case in `XxxViewModelIntegrationTest.kt` must have a counterpart here — mock tests mirror real tests
 - All error states: `NetworkError`, `HttpError`, `RateLimitError`
 - All snackbar / one-shot event emissions (e.g. `NoInternet` snackbar on network failure)
 - All loading and transition states: initial loading, loading during refresh
@@ -303,8 +306,6 @@ Mocks at the repository layer via `FakeXxxRepository`. No HTTP client, no Room D
 - Error recovery: retry after error reaches success
 - Concurrent trigger protection: rapid re-trigger does not corrupt state
 - Any feature-specific edge case from Phase 1 Step 2 that is impractical to trigger with a live API
-
-This is the fast feedback loop used during active development — every requirement must be verifiable here without a network connection.
 
 **Fake repository pattern:**
 ```kotlin

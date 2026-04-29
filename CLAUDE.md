@@ -57,8 +57,8 @@ For every new feature — whether implemented by an agent or a human developer:
 4. **Design the implementation** — given the test spec, decide: what `UiState` fields are needed, what the ViewModel state machine looks like, what repository/data-layer changes are required. The test spec drives these decisions — if a test case requires a state the current design cannot produce, fix the design before writing code.
 
 5. **Implement** — write the integration tests first (from the spec), then write the non-UI code (repository changes, ViewModel) to make them pass. No Screen composables yet. Two test files are required for every feature ViewModel:
-   - **Real HTTP test** (`XxxViewModelIntegrationTest.kt`) — uses a real Ktor CIO client and real Room DB. One test per spec row. Covers the happy path and cache-first behaviour that require a real network round-trip to verify.
-   - **Mock test** (`mock/XxxViewModelMockTest.kt`) — mocks at the repository layer via fake implementations. Must be a **strict superset** of the real HTTP tests: every case in `XxxViewModelIntegrationTest.kt` must have a corresponding mock test, plus all error states, edge cases, and concurrency scenarios that are impractical to trigger with a real HTTP client (network error, rate limit, timeout, cancellation, empty response, rapid re-trigger).
+   - **Real HTTP test** (`XxxViewModelIntegrationTest.kt`) — uses a real Ktor CIO client and real Room DB. Runs on the JVM desktop target in ~15 seconds with no emulator — this is the **fast feedback loop during active development**. Covers the happy path and cache-first behaviour that require a real network round-trip to verify.
+   - **Mock test** (`mock/XxxViewModelMockTest.kt`) — mocks at the repository layer via fake implementations. This is the **requirement and code-change coverage guarantee**: every requirement and every code change to a feature must be covered here. Must cover the same cases as the real HTTP tests plus all error states, edge cases, and concurrency scenarios that are impractical to trigger with a real HTTP client (network error, rate limit, timeout, cancellation, empty response, rapid re-trigger).
 
 6. **Verify integration tests pass** — run `./gradlew :integration-test:desktopTest`. Every test from the spec in both test files must pass. Fix failures in the implementation — do not weaken the tests.
 
@@ -69,7 +69,7 @@ For every new feature — whether implemented by an agent or a human developer:
    - **7d. Write Kaspresso + Kakao UI tests** in `app/src/androidTest/` that mock the data layer (repositories) via Koin test modules, use real ViewModels, and assert the screen's rendered output and interaction behaviour for each spec row.
    - **7e. Verify UI tests pass** on device or emulator.
 
-**Why this order:** Designing tests before implementation forces the design to be testable by construction. The test spec acts as a formal contract — it exposes ambiguous requirements before any code exists, when they are cheapest to resolve. KMP's `desktopTest` verifies the full non-UI stack in ~15 seconds (fast loop). The mock test layer covers every requirement case plus all error and edge cases without hitting a real network — this is the fast feedback loop used by developers and agents during active implementation. The real HTTP layer validates the full stack end-to-end. Together they guarantee that every stated requirement is covered. Kaspresso/Kakao UI tests then verify the Screen composable's rendering and interactions against the same requirements — with the data layer mocked so tests are deterministic and fast to run on CI.
+**Why this order:** Designing tests before implementation forces the design to be testable by construction. The test spec acts as a formal contract — it exposes ambiguous requirements before any code exists, when they are cheapest to resolve. The real HTTP `desktopTest` suite runs on the JVM in ~15 seconds with no emulator — it is the fast feedback loop developers and agents use during active development. The mock test layer is the coverage guarantee: every requirement and every code change must have a corresponding mock test, and the mock tests mirror every case in the real HTTP tests, making it impossible for a requirement to go unverified even in offline or CI environments. Kaspresso/Kakao UI tests then verify the Screen composable's rendering and interactions against the same requirements — with the data layer mocked so tests are deterministic and fast to run on CI.
 
 ---
 
@@ -82,14 +82,14 @@ For every requirement change, edit, or removal — whether implemented by an age
 2. **Update the integration test spec** in `shared_context.md` Decisions Log — revise the scenario table to reflect the new requirement. Record what changed and why. A spec that no longer matches the tests is a lie.
 
 3. **Update both test layers** — the project maintains two layers of ViewModel integration tests:
-   - **Real HTTP tests** (`*ViewModelIntegrationTest.kt`) — validate the full stack against a real API and real Room DB. Update or remove tests whose expected behaviour has changed.
-   - **Mock tests** (`mock/*ViewModelMockTest.kt`) — mock at the repository layer; must cover every behavioural case in the real HTTP ViewModel tests **plus** all error and edge cases. After updating real HTTP tests, verify mock tests still form a superset. Add or remove mock tests as needed.
+   - **Real HTTP tests** (`*ViewModelIntegrationTest.kt`) — fast feedback loop on the JVM desktop target; validates the full stack against a real API and real Room DB. Update or remove tests whose expected behaviour has changed.
+   - **Mock tests** (`mock/*ViewModelMockTest.kt`) — requirement and code-change coverage guarantee; every requirement change must be reflected here before any implementation code is written. Must cover the same cases as the real HTTP tests plus all error and edge cases. After updating real HTTP tests, verify mock tests still mirror them and remain a superset. Add or remove mock tests as needed.
 
 4. **Verify** — run `./gradlew :integration-test:desktopTest`. All tests must pass before writing any implementation code. Fix the tests to match the new requirement — never weaken a test to make it pass.
 
 5. **Then implement** — follow the standard Feature Development Workflow from step 4 onward.
 
-**Why this matters:** Tests that describe the old requirement are worse than no tests — they give false confidence and will eventually be silently worked around. Keeping tests in sync with requirements on every change is what makes the test suite trustworthy.
+**Why this matters:** The real HTTP tests give fast feedback that the full stack is wired correctly. The mock tests are the paper trail for every requirement — if a requirement has no mock test, there is no way to verify it survives a code change. Keeping both layers in sync with requirements on every change is what makes the test suite trustworthy.
 
 ---
 
