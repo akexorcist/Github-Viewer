@@ -72,6 +72,7 @@ dependencies {
     // Image
     implementation(libs.coil.compose)
     implementation(libs.coil.network.ktor)
+    implementation(libs.coil.svg)
 
     // Markdown
     implementation(libs.markdown.renderer.m3)

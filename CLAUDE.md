@@ -71,6 +71,26 @@ For every new feature — whether implemented by an agent or a human developer:
 
 ---
 
+## Requirement Change Workflow (Never Skip)
+
+For every requirement change, edit, or removal — whether implemented by an agent or a human developer — **before writing any code**:
+
+1. **Identify affected tests** — read every test in `:integration-test` whose name or assertions relate to the changed requirement. List: tests to delete (requirement removed), tests to update (behaviour changed), tests to add (new cases introduced by the change).
+
+2. **Update the integration test spec** in `shared_context.md` Decisions Log — revise the scenario table to reflect the new requirement. Record what changed and why. A spec that no longer matches the tests is a lie.
+
+3. **Update both test layers** — the project maintains two layers of ViewModel integration tests:
+   - **Real HTTP tests** (`*ViewModelIntegrationTest.kt`) — validate the full stack against a real API and real Room DB. Update or remove tests whose expected behaviour has changed.
+   - **Mock tests** (`mock/*ViewModelMockTest.kt`) — mock at the repository layer; must cover every behavioural case in the real HTTP ViewModel tests **plus** all error and edge cases. After updating real HTTP tests, verify mock tests still form a superset. Add or remove mock tests as needed.
+
+4. **Verify** — run `./gradlew :integration-test:desktopTest`. All tests must pass before writing any implementation code. Fix the tests to match the new requirement — never weaken a test to make it pass.
+
+5. **Then implement** — follow the standard Feature Development Workflow from step 4 onward.
+
+**Why this matters:** Tests that describe the old requirement are worse than no tests — they give false confidence and will eventually be silently worked around. Keeping tests in sync with requirements on every change is what makes the test suite trustworthy.
+
+---
+
 ## Project Constraints (Never Violate)
 
 - Uses KMP (kotlin.multiplatform plugin) — never use `jetbrainsKotlinAndroid` plugin

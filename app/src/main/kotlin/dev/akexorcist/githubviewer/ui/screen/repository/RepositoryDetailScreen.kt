@@ -187,6 +187,13 @@ private fun RepositoryDetail(
             }
         }
 
+        HorizontalDivider()
+        ReadmeSection(
+            readme = readme,
+            onRetry = onRetryReadme,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
         lastUpdatedAt?.let {
             HorizontalDivider()
             LastUpdatedText(
@@ -194,13 +201,6 @@ private fun RepositoryDetail(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
-
-        HorizontalDivider()
-        ReadmeSection(
-            readme = readme,
-            onRetry = onRetryReadme,
-            modifier = Modifier.fillMaxWidth(),
-        )
     }
 }
 
@@ -256,7 +256,6 @@ private fun ReadmeSection(
                         imageTransformer = Coil3ImageTransformerImpl,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp)
                             .testTag("readme_content"),
                     )
                 }

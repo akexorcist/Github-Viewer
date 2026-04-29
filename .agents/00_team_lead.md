@@ -148,6 +148,8 @@ Verify by reading `shared_context.md` after the agent completes:
 - At least one `*ViewModelTest.kt` exists per feature for pure state-logic behaviour
 
 **Not acceptable if:**
+- A requirement was changed or removed and the existing test spec in `shared_context.md` was not updated before implementation — stale specs are silent lies
+- A requirement was changed and mock tests (`mock/*ViewModelMockTest.kt`) no longer cover every case in real HTTP ViewModel tests (`*ViewModelIntegrationTest.kt`) — mock tests must remain a superset
 - Either test spec table is missing from `shared_context.md`
 - Screen composable derives or recalculates state instead of consuming `UiState` directly
 - Screen composable has a UI element with no corresponding `UiState` field — hidden logic in the composable

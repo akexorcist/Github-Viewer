@@ -346,6 +346,7 @@ Verify `testImplementation` entries are present in the module's `build.gradle.kt
 
 ## Rules
 - Every import path comes from `shared_context.md` Known Class Locations — never guess
+- **When a requirement changes, audit all existing tests in `:integration-test` before writing any code** — update or remove tests whose expected behaviour has changed; ensure mock tests (`mock/*ViewModelMockTest.kt`) remain a superset of real HTTP ViewModel tests (`*ViewModelIntegrationTest.kt`); update the integration test spec in `shared_context.md` Decisions Log to match; run `./gradlew :integration-test:desktopTest` and confirm all tests pass before touching implementation
 - **The integration test spec (Phase 1, Step 3) must be written before any implementation code** — the spec defines what the implementation must satisfy, not the other way around
 - **The UI test spec (Phase 2, Step 2) must be written before any UI tests** — same discipline applies to the UI layer
 - **Phase 1 must complete and all integration tests must pass before Phase 2 begins** — non-negotiable
