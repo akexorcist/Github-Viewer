@@ -140,7 +140,11 @@ Verify by reading `shared_context.md` after the agent completes:
   - Edge case list
   - Named integration test spec table (scenario → precondition → action → expected `uiState` assertions)
   - Named UI test spec table (scenario → fake data setup → expected rendered elements / interactions)
-- The number of test functions in `*ViewModelIntegrationTest.kt` ≥ rows in the integration test spec table
+- For every feature ViewModel, **two** test files exist:
+  - `XxxViewModelIntegrationTest.kt` — real HTTP + Room, happy path and cache-first
+  - `mock/XxxViewModelMockTest.kt` — repository-layer mocks, superset of real HTTP tests plus all error/edge cases
+- The number of test functions in `*ViewModelIntegrationTest.kt` ≥ happy-path rows in the integration test spec table
+- The number of test functions in `mock/*ViewModelMockTest.kt` ≥ total rows in the integration test spec table (it must cover every row, not just happy-path)
 - The number of test functions in `*ScreenTest.kt` ≥ rows in the UI test spec table
 - `./gradlew :integration-test:desktopTest` PASS — confirmed in `feature_result.md`
 - `./gradlew connectedAndroidTest` PASS (or test file exists with confirmed compilation if device unavailable)
@@ -150,6 +154,7 @@ Verify by reading `shared_context.md` after the agent completes:
 **Not acceptable if:**
 - A requirement was changed or removed and the existing test spec in `shared_context.md` was not updated before implementation — stale specs are silent lies
 - A requirement was changed and mock tests (`mock/*ViewModelMockTest.kt`) no longer cover every case in real HTTP ViewModel tests (`*ViewModelIntegrationTest.kt`) — mock tests must remain a superset
+- `mock/*ViewModelMockTest.kt` is missing for any feature ViewModel — the mock layer is not optional
 - Either test spec table is missing from `shared_context.md`
 - Screen composable derives or recalculates state instead of consuming `UiState` directly
 - Screen composable has a UI element with no corresponding `UiState` field — hidden logic in the composable

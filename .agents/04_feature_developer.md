@@ -101,14 +101,22 @@ Given the test spec from Step 3, decide:
 If a test case requires a state the current design cannot produce, **fix the design now** — before writing code. Do not defer design problems to the implementation phase.
 
 #### Step 5 — Implement (tests first, then code)
-Write the integration tests in `:integration-test` (`desktopTest`) directly from the test spec:
-- Create `XxxViewModelIntegrationTest.kt` in `integration-test/src/desktopTest/`
-- Use real Ktor CIO client + real Room (`BundledSQLiteDriver`) — no mocks
-- Share a single `companion object` database per test class to minimise API calls
-- Use Turbine drain loops — not fixed `awaitItem()` counts
-- Apply extended Turbine timeouts for tests with multiple concurrent HTTP calls
+Write **both** integration test files in `:integration-test` (`desktopTest`) directly from the test spec before writing any implementation code:
 
-Then write the implementation (ViewModel, UiState, repository changes) to make the tests pass.
+**File 1 — Real HTTP test:** `XxxViewModelIntegrationTest.kt` in `integration-test/src/desktopTest/`
+- Uses real Ktor CIO client + real Room (`BundledSQLiteDriver`) — no mocks
+- Share a single `companion object` database per test class to minimise API calls
+- One test per happy-path and cache-first spec row — the cases that require a real network round-trip to verify
+
+**File 2 — Mock test:** `mock/XxxViewModelMockTest.kt` in `integration-test/src/desktopTest/mock/`
+- Mocks at the repository layer via `FakeXxxRepository` — no HTTP client, no Room DB
+- Must be a **strict superset** of File 1: every case in `XxxViewModelIntegrationTest.kt` must have a counterpart here
+- Must additionally cover all error states, edge cases, and concurrency scenarios that are impractical with a real HTTP client: `NetworkError`, `HttpError`, `RateLimitError`, timeout, cancellation mid-flight, rapid re-trigger, empty response, cache-first sequencing
+- This is the fast feedback loop — developers and agents run this layer continuously during implementation
+
+Use Turbine drain loops — not fixed `awaitItem()` counts. Apply extended Turbine timeouts (`timeout = 15.seconds`) for tests that trigger multiple concurrent coroutines.
+
+Then write the implementation (ViewModel, UiState, repository changes) to make all tests pass.
 
 **ViewModel rules:**
 - Extend `AndroidViewModel` only when application context is genuinely needed; otherwise `ViewModel`
@@ -247,31 +255,24 @@ Write every ViewModel with testing in mind:
 
 ### Integration tests (`:integration-test` module — `desktopTest` source set) — PRIMARY
 
-These are the main correctness gate. They are derived directly from the test spec designed in Phase 1, Step 3. Every row in the test spec table becomes one test function. Written before the implementation in Step 5, must all pass before Phase 2 starts.
+Two test files are required for every feature ViewModel. Both are derived from the test spec in Phase 1 Step 3 and must be written before any implementation code.
 
-For every feature ViewModel, create `XxxViewModelIntegrationTest.kt` in `integration-test/src/desktopTest/`:
+---
 
-#### Coverage requirements (every item below must have a named test case in the spec)
+#### File 1 — Real HTTP tests: `XxxViewModelIntegrationTest.kt`
+
+Path: `integration-test/src/desktopTest/kotlin/.../XxxViewModelIntegrationTest.kt`
+
+Uses a real Ktor CIO client and real Room DB. Validates the full stack end-to-end.
+
+**Coverage requirements:**
 - Happy path: correct content state is emitted after a successful load
 - Empty state: empty state is emitted when the API returns no data
-- Error state: error state is emitted on network failure
-- Pagination: next-page load appends items and does not replace them
 - Cache-first: cached data is emitted before the network response arrives
-- Any edge case identified in Step 2 of Phase 1
+- Pagination: next-page load appends items and does not replace them
+- Any happy-path edge case that requires a real network round-trip to verify
 
-#### Turbine patterns (use these — do not use fixed awaitItem counts)
-```kotlin
-// Wait for loading to finish — handles any number of intermediate states
-var state = awaitItem()
-while (state.isLoading || (state.content == null && state.error == null)) {
-    state = awaitItem()
-}
-
-// Extended timeout for tests with multiple concurrent HTTP calls
-viewModel.uiState.test(timeout = 15.seconds) { ... }
-```
-
-#### Test class structure
+**Test class structure:**
 ```kotlin
 class XxxViewModelIntegrationTest {
     companion object {
@@ -282,6 +283,62 @@ class XxxViewModelIntegrationTest {
     }
     private fun createViewModel() = TestDependencies.createXxxViewModel(repository)
 }
+```
+
+---
+
+#### File 2 — Mock tests: `mock/XxxViewModelMockTest.kt`
+
+Path: `integration-test/src/desktopTest/kotlin/.../mock/XxxViewModelMockTest.kt`
+
+Mocks at the repository layer via `FakeXxxRepository`. No HTTP client, no Room DB.
+
+**Superset rule — mock tests must cover everything in File 1, plus:**
+- Every case in `XxxViewModelIntegrationTest.kt` must have a counterpart here
+- All error states: `NetworkError`, `HttpError`, `RateLimitError`
+- All snackbar / one-shot event emissions (e.g. `NoInternet` snackbar on network failure)
+- All loading and transition states: initial loading, loading during refresh
+- Cache-first sequencing: cached value emitted first, then fresh value (use `Channel`-based sequencing — not `cacheThenNetwork` — to guarantee ordering against StateFlow conflation)
+- Refresh behaviour: `lastUpdatedAt` advances, existing content preserved during re-fetch
+- Error recovery: retry after error reaches success
+- Concurrent trigger protection: rapid re-trigger does not corrupt state
+- Any feature-specific edge case from Phase 1 Step 2 that is impractical to trigger with a live API
+
+This is the fast feedback loop used during active development — every requirement must be verifiable here without a network connection.
+
+**Fake repository pattern:**
+```kotlin
+class FakeXxxRepository(
+    private val getDataImpl: suspend (params) -> Flow<Result<XxxData>> = { successFlow(testXxxData()) },
+) : XxxRepository {
+    override fun getData(params): Flow<Result<XxxData>> = flow { emitAll(getDataImpl(params)) }
+}
+
+fun successFlow(value: T) = flowOf(Result.Success(value))
+fun errorFlow(error: AppError) = flowOf(Result.Error(error))
+```
+
+---
+
+#### Turbine patterns (use in both files — never fixed `awaitItem()` counts)
+```kotlin
+// Result-targeted drain — exits when content or error arrives
+var state = awaitItem()
+while (state.content == null && state.error == null) state = awaitItem()
+
+// Error drain
+var state = awaitItem()
+while (state.error == null && state.content == null) state = awaitItem()
+
+// Extended timeout for tests with multiple concurrent coroutines
+viewModel.uiState.test(timeout = 15.seconds) { ... }
+
+// Channel-based cache-first sequencing (required — cacheThenNetwork is unreliable)
+val channel = Channel<Result<XxxData>>(Channel.UNLIMITED)
+channel.send(Result.Success(cached))
+var state = awaitItem()
+while (state.content?.id != cached.id && state.error == null) state = awaitItem()
+channel.send(Result.Success(fresh))   // only after cached confirmed
 ```
 
 ---

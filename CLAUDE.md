@@ -56,9 +56,11 @@ For every new feature — whether implemented by an agent or a human developer:
 
 4. **Design the implementation** — given the test spec, decide: what `UiState` fields are needed, what the ViewModel state machine looks like, what repository/data-layer changes are required. The test spec drives these decisions — if a test case requires a state the current design cannot produce, fix the design before writing code.
 
-5. **Implement** — write the integration tests first (from the spec), then write the non-UI code (repository changes, ViewModel) to make them pass. No Screen composables yet.
+5. **Implement** — write the integration tests first (from the spec), then write the non-UI code (repository changes, ViewModel) to make them pass. No Screen composables yet. Two test files are required for every feature ViewModel:
+   - **Real HTTP test** (`XxxViewModelIntegrationTest.kt`) — uses a real Ktor CIO client and real Room DB. One test per spec row. Covers the happy path and cache-first behaviour that require a real network round-trip to verify.
+   - **Mock test** (`mock/XxxViewModelMockTest.kt`) — mocks at the repository layer via fake implementations. Must be a **strict superset** of the real HTTP tests: every case in `XxxViewModelIntegrationTest.kt` must have a corresponding mock test, plus all error states, edge cases, and concurrency scenarios that are impractical to trigger with a real HTTP client (network error, rate limit, timeout, cancellation, empty response, rapid re-trigger).
 
-6. **Verify integration tests pass** — run `./gradlew :integration-test:desktopTest`. Every test from the spec must pass. Fix failures in the implementation — do not weaken the tests.
+6. **Verify integration tests pass** — run `./gradlew :integration-test:desktopTest`. Every test from the spec in both test files must pass. Fix failures in the implementation — do not weaken the tests.
 
 7. **Implement the UI** — only after step 6 passes:
    - **7a. Write the Screen composable** consuming `UiState` exactly as the ViewModel provides it. The ViewModel's `UiState` is trusted — it was designed and verified in steps 3–6. Do not re-derive state, add conditional logic, or compensate for missing state in the composable. If the UI needs a state that `UiState` does not express, go back and add it to the ViewModel.
@@ -67,7 +69,7 @@ For every new feature — whether implemented by an agent or a human developer:
    - **7d. Write Kaspresso + Kakao UI tests** in `app/src/androidTest/` that mock the data layer (repositories) via Koin test modules, use real ViewModels, and assert the screen's rendered output and interaction behaviour for each spec row.
    - **7e. Verify UI tests pass** on device or emulator.
 
-**Why this order:** Designing tests before implementation forces the design to be testable by construction. The test spec acts as a formal contract — it exposes ambiguous requirements before any code exists, when they are cheapest to resolve. KMP's `desktopTest` verifies the full non-UI stack in ~15 seconds (fast loop). Kaspresso/Kakao UI tests then verify the Screen composable's rendering and interactions against the same requirements — with the data layer mocked so tests are deterministic and fast to run on CI.
+**Why this order:** Designing tests before implementation forces the design to be testable by construction. The test spec acts as a formal contract — it exposes ambiguous requirements before any code exists, when they are cheapest to resolve. KMP's `desktopTest` verifies the full non-UI stack in ~15 seconds (fast loop). The mock test layer covers every requirement case plus all error and edge cases without hitting a real network — this is the fast feedback loop used by developers and agents during active implementation. The real HTTP layer validates the full stack end-to-end. Together they guarantee that every stated requirement is covered. Kaspresso/Kakao UI tests then verify the Screen composable's rendering and interactions against the same requirements — with the data layer mocked so tests are deterministic and fast to run on CI.
 
 ---
 
