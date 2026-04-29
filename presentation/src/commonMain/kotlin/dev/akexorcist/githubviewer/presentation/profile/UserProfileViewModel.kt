@@ -3,6 +3,7 @@ package dev.akexorcist.githubviewer.presentation.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.akexorcist.githubviewer.core.common.AppError
+import dev.akexorcist.githubviewer.core.common.PAGE_SIZE
 import dev.akexorcist.githubviewer.core.common.PagingState
 import dev.akexorcist.githubviewer.core.common.Result
 import dev.akexorcist.githubviewer.data.model.Repository
@@ -40,7 +41,7 @@ class UserProfileViewModel(
     fun onLoadMoreRepositories() {
         val state = _uiState.value
         if (!state.repositories.hasNextPage || state.repositories.isLoadingMore) return
-        val nextPage = state.repositories.currentPage + 1
+        val nextPage = (state.repositories.items.size / PAGE_SIZE) + 1
         viewModelScope.launch { fetchRepositories(page = nextPage, append = true) }
     }
 
@@ -67,7 +68,11 @@ class UserProfileViewModel(
     }
 
     private suspend fun fetchRepositories(page: Int, append: Boolean) {
-        if (append) _uiState.update { it.copy(repositories = it.repositories.loadingMore()) }
+        if (append) {
+            _uiState.update { it.copy(repositories = it.repositories.loadingMore()) }
+        } else {
+            _uiState.update { state -> state.copy(repositories = state.repositories.copy(error = null)) }
+        }
 
         val forceRefresh = append || _uiState.value.repositories.items.isEmpty()
         repositoryRepository.getUserRepositories(login, page, forceRefresh)
@@ -79,13 +84,24 @@ class UserProfileViewModel(
                             val updated = if (append) state.repositories.appendPage(pageResult)
                             else PagingState(
                                 items = pageResult.items,
-                                currentPage = pageResult.page,
                                 hasNextPage = pageResult.hasNextPage,
                             )
                             state.copy(repositories = updated)
                         }
                     }
-                    is Result.Error -> handleError(result.error)
+                    is Result.Error -> {
+                        if (result.error is AppError.NetworkError) {
+                            _snackbarEvent.trySend(UserProfileSnackbarEvent.NoInternet)
+                        }
+                        _uiState.update { state ->
+                            state.copy(
+                                repositories = state.repositories.copy(
+                                    isLoadingMore = false,
+                                    error = result.error,
+                                )
+                            )
+                        }
+                    }
                 }
             }
             .launchIn(viewModelScope)

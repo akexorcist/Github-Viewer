@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -41,6 +42,7 @@ import com.mikepenz.markdown.coil3.Coil3ImageTransformerImpl
 import com.mikepenz.markdown.m3.Markdown
 import dev.akexorcist.githubviewer.R
 import dev.akexorcist.githubviewer.data.model.Repository
+import dev.akexorcist.githubviewer.presentation.repository.ReadmeState
 import dev.akexorcist.githubviewer.presentation.repository.RepositoryDetailSnackbarEvent
 import dev.akexorcist.githubviewer.presentation.repository.RepositoryDetailUiState
 import dev.akexorcist.githubviewer.presentation.repository.RepositoryDetailViewModel
@@ -112,8 +114,8 @@ fun RepositoryDetailScreen(
                 RepositoryDetail(
                     repository = repository,
                     lastUpdatedAt = uiState.lastUpdatedAt,
-                    readmeContent = uiState.readmeContent,
-                    isReadmeLoading = uiState.isReadmeLoading,
+                    readme = uiState.readme,
+                    onRetryReadme = viewModel::onRefresh,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding),
@@ -128,8 +130,8 @@ fun RepositoryDetailScreen(
 private fun RepositoryDetail(
     repository: Repository,
     lastUpdatedAt: Instant?,
-    readmeContent: String?,
-    isReadmeLoading: Boolean,
+    readme: ReadmeState,
+    onRetryReadme: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.verticalScroll(rememberScrollState())) {
@@ -195,8 +197,8 @@ private fun RepositoryDetail(
 
         HorizontalDivider()
         ReadmeSection(
-            readmeContent = readmeContent,
-            isReadmeLoading = isReadmeLoading,
+            readme = readme,
+            onRetry = onRetryReadme,
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -204,8 +206,8 @@ private fun RepositoryDetail(
 
 @Composable
 private fun ReadmeSection(
-    readmeContent: String?,
-    isReadmeLoading: Boolean,
+    readme: ReadmeState,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -213,8 +215,8 @@ private fun ReadmeSection(
             text = stringResource(R.string.readme_section_title),
             style = MaterialTheme.typography.titleMedium,
         )
-        when {
-            isReadmeLoading && readmeContent == null -> Box(
+        when (readme) {
+            is ReadmeState.Loading -> Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
@@ -223,22 +225,42 @@ private fun ReadmeSection(
             ) {
                 CircularProgressIndicator()
             }
-            readmeContent == "" -> Text(
-                text = stringResource(R.string.readme_not_available),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .padding(top = 8.dp)
-                    .testTag("readme_empty"),
-            )
-            readmeContent != null -> Markdown(
-                content = readmeContent,
-                imageTransformer = Coil3ImageTransformerImpl,
+            is ReadmeState.Error -> Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp)
-                    .testTag("readme_content"),
-            )
+                    .padding(vertical = 16.dp)
+                    .testTag("readme_error"),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.error_failed_to_load_readme),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(onClick = onRetry) { Text("Retry") }
+            }
+            is ReadmeState.Loaded -> {
+                if (readme.content.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.readme_not_available),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .testTag("readme_empty"),
+                    )
+                } else {
+                    Markdown(
+                        content = readme.content,
+                        imageTransformer = Coil3ImageTransformerImpl,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
+                            .testTag("readme_content"),
+                    )
+                }
+            }
         }
     }
 }
@@ -293,8 +315,8 @@ private fun RepositoryDetailPreview() {
         RepositoryDetail(
             repository = previewRepository,
             lastUpdatedAt = null,
-            readmeContent = "# Github Viewer\n\nA GitHub viewer app built with **Kotlin Multiplatform**.",
-            isReadmeLoading = false,
+            readme = ReadmeState.Loaded("# Github Viewer\n\nA GitHub viewer app built with **Kotlin Multiplatform**."),
+            onRetryReadme = {},
             modifier = Modifier.fillMaxSize(),
         )
     }
@@ -307,8 +329,8 @@ private fun RepositoryDetailNoTopicsPreview() {
         RepositoryDetail(
             repository = previewRepository.copy(topics = emptyList(), description = null),
             lastUpdatedAt = null,
-            readmeContent = null,
-            isReadmeLoading = true,
+            readme = ReadmeState.Loading,
+            onRetryReadme = {},
             modifier = Modifier.fillMaxSize(),
         )
     }

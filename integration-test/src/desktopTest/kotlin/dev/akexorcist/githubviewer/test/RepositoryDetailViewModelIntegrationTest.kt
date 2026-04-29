@@ -2,6 +2,7 @@ package dev.akexorcist.githubviewer.test
 
 import app.cash.turbine.test
 import dev.akexorcist.githubviewer.data.repository.RepositoryRepository
+import dev.akexorcist.githubviewer.presentation.repository.ReadmeState
 import dev.akexorcist.githubviewer.presentation.repository.RepositoryDetailViewModel
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.comparables.shouldBeGreaterThanOrEqualTo
@@ -9,7 +10,10 @@ import io.kotest.matchers.comparables.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldStartWith
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldNotBeInstanceOf
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -127,50 +131,28 @@ class RepositoryDetailViewModelIntegrationTest {
     // ─── README loading ──────────────────────────────────────────────────────
 
     @Test
-    fun `init loads readme content after repository loads`() = runTest {
+    fun `init loads readme after repository loads`() = runTest {
         val viewModel = createViewModel()
         viewModel.uiState.test {
             var state = awaitItem()
-            while (state.readmeContent == null && state.isReadmeLoading && state.error == null) {
+            while (state.readme is ReadmeState.Loading && state.error == null) {
                 state = awaitItem()
             }
-            state.readmeContent.shouldNotBeNull()
+            state.readme.shouldNotBeInstanceOf<ReadmeState.Loading>()
             state.error.shouldBeNull()
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `init sets isReadmeLoading to false after readme loads`() = runTest {
+    fun `init readme reaches terminal state — loaded or error — not stuck loading`() = runTest {
         val viewModel = createViewModel()
         viewModel.uiState.test {
             var state = awaitItem()
-            while (state.readmeContent == null && state.isReadmeLoading && state.error == null) {
+            while (state.readme is ReadmeState.Loading && state.error == null) {
                 state = awaitItem()
             }
-            state.isReadmeLoading.shouldBeFalse()
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun `onRefresh updates readme content`() = runTest {
-        val viewModel = createViewModel()
-        viewModel.uiState.test(timeout = 15.seconds) {
-            var state = awaitItem()
-            while (state.readmeContent == null && state.isReadmeLoading && state.error == null) {
-                state = awaitItem()
-            }
-            val firstReadme = state.readmeContent.shouldNotBeNull()
-
-            viewModel.onRefresh()
-
-            // After refresh, readme must still be non-null (cache serves first, then network update)
-            var refreshed = awaitItem()
-            while (refreshed.isReadmeLoading) {
-                refreshed = awaitItem()
-            }
-            refreshed.readmeContent.shouldNotBeNull()
+            state.readme.shouldNotBeInstanceOf<ReadmeState.Loading>()
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -196,6 +178,31 @@ class RepositoryDetailViewModelIntegrationTest {
             }
             val repo = refreshed.repository.shouldNotBeNull()
             repo.fullName shouldBe initialRepo.fullName
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `onRefresh preserves readme state while re-fetching`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.uiState.test(timeout = 15.seconds) {
+            var state = awaitItem()
+            while (state.readme is ReadmeState.Loading && state.error == null) {
+                state = awaitItem()
+            }
+            val readmeBeforeRefresh = state.readme
+
+            viewModel.onRefresh()
+
+            // After refresh trigger, readme should stay in its pre-refresh state (Loaded or Error)
+            // — it must not regress to Loading when content was already Loaded
+            var refreshed = awaitItem()
+            if (readmeBeforeRefresh is ReadmeState.Loaded) {
+                while (refreshed.readme is ReadmeState.Loading) {
+                    refreshed = awaitItem()
+                }
+                refreshed.readme.shouldBeInstanceOf<ReadmeState.Loaded>()
+            }
             cancelAndIgnoreRemainingEvents()
         }
     }

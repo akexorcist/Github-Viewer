@@ -71,8 +71,9 @@
 - Remaining concern: delimiter choice is not documented; a topic containing `|` would still split incorrectly.
 - Files: `core/database/src/commonMain/.../converter/StringListConverter.kt`
 
-### [MEDIUM] Debounce + `onSearchClick` double-search race
-- Explicit search tap fires `executeSearch`, then 500ms later the debounce fires again, replacing results.
+### [MEDIUM] Debounce + `onSearchClick` double-search race — MITIGATED
+- `onSearchClick` now sets `lastSearchedQuery` before calling `executeSearch`, so the debounce's `query != lastSearchedQuery` guard prevents it from re-triggering the same query.
+- Residual: if the user changes query AFTER clicking search (but within 500ms), the debounce may still fire a second search.
 - File: `presentation/src/commonMain/.../search/SearchViewModel.kt`
 
 ### [LOW] `sealed class` used for stateless event hierarchies — prefer `sealed interface`
@@ -92,6 +93,10 @@
 
 ### [LOW] `!!` used in integration tests after `shouldNotBeNull()` — should capture return value
 - Files: `UserProfileViewModelIntegrationTest.kt`, `RepositoryDetailViewModelIntegrationTest.kt`
+
+### [CRITICAL] `desktopTest` missing `workingDir = rootProject.projectDir` — RESOLVED
+- Without this, `File("integration-test/.env")` resolves to `integration-test/integration-test/.env` (wrong). Token never loaded → unauthenticated → 60 req/hr rate limit → tests fail after 1-2 runs.
+- Fixed in `integration-test/build.gradle.kts`: `workingDir = rootProject.projectDir` added to `desktopTest` task.
 
 ### [LOW] `checkRateLimit` false-positive on successful responses — RESOLVED
 - Old code threw `RateLimitError` whenever `X-RateLimit-Remaining == 0`, including on 2xx responses (last successful request before limit). Valid data was discarded.

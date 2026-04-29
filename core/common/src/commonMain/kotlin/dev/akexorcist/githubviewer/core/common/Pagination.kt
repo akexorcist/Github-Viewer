@@ -8,18 +8,18 @@ data class PageResult<T>(
 
 data class PagingState<T>(
     val items: List<T> = emptyList(),
-    val currentPage: Int = 1,
     val hasNextPage: Boolean = false,
     val isLoadingMore: Boolean = false,
+    val error: AppError? = null,
 ) {
     fun appendPage(result: PageResult<T>): PagingState<T> = copy(
         items = items + result.items,
-        currentPage = result.page,
         hasNextPage = result.hasNextPage,
         isLoadingMore = false,
+        error = null,
     )
 
-    fun loadingMore(): PagingState<T> = copy(isLoadingMore = true)
+    fun loadingMore(): PagingState<T> = copy(isLoadingMore = true, error = null)
 }
 
 const val PAGE_SIZE = 30

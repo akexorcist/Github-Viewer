@@ -101,11 +101,12 @@ class UserProfileViewModelIntegrationTest {
         val viewModel = createViewModel()
         viewModel.uiState.test {
             var state = awaitItem()
-            while (state.repositories.items.isEmpty() && state.error == null) {
+            while (state.repositories.items.isEmpty() && state.error == null && state.repositories.error == null) {
                 state = awaitItem()
             }
             state.repositories.items.shouldNotBeEmpty()
             state.repositories.items.first().name.shouldNotBeBlank()
+            state.repositories.error.shouldBeNull()
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -181,12 +182,13 @@ class UserProfileViewModelIntegrationTest {
             viewModel.onLoadMoreRepositories()
 
             var moreState = awaitItem()
-            while (moreState.repositories.isLoadingMore || moreState.repositories.items.size <= page1Count) {
+            while ((moreState.repositories.isLoadingMore || moreState.repositories.items.size <= page1Count) && moreState.repositories.error == null) {
                 moreState = awaitItem()
             }
 
             moreState.repositories.items.size shouldBeGreaterThanOrEqualTo page1Count + 1
             moreState.repositories.isLoadingMore.shouldBeFalse()
+            moreState.repositories.error.shouldBeNull()
             cancelAndIgnoreRemainingEvents()
         }
     }

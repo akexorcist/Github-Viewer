@@ -57,14 +57,23 @@ class RepositoryDetailViewModel(
             }
             .launchIn(viewModelScope)
 
-        _uiState.update { it.copy(isReadmeLoading = true) }
+        _uiState.update { state ->
+            // On refresh, keep existing content visible while fetching; otherwise show loading
+            val nextReadme = if (forceRefresh && state.readme is ReadmeState.Loaded) state.readme
+                             else ReadmeState.Loading
+            state.copy(readme = nextReadme)
+        }
         repositoryRepository.getReadme(owner, repo, forceRefresh)
             .onEach { result ->
                 when (result) {
                     is Result.Success -> _uiState.update {
-                        it.copy(readmeContent = result.data, isReadmeLoading = false)
+                        it.copy(readme = ReadmeState.Loaded(result.data))
                     }
-                    is Result.Error -> _uiState.update { it.copy(isReadmeLoading = false) }
+                    is Result.Error -> _uiState.update { state ->
+                        // If refresh fails and content is already showing, preserve it
+                        if (state.readme is ReadmeState.Loaded) state
+                        else state.copy(readme = ReadmeState.Error(result.error))
+                    }
                 }
             }
             .launchIn(viewModelScope)

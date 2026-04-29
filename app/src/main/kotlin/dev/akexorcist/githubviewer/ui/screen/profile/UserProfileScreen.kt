@@ -140,6 +140,21 @@ fun UserProfileScreen(
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 }
 
+                if (uiState.repositories.error != null) {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(stringResource(R.string.error_failed_to_load_repositories))
+                            Button(onClick = viewModel::onRefresh) { Text("Retry") }
+                        }
+                    }
+                }
+
                 if (uiState.repositories.hasNextPage) {
                     item {
                         Box(
