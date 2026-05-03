@@ -8,13 +8,13 @@
 ## Two Layers of Knowledge
 
 ### Layer 1 — Team Knowledge (permanent, cross-project)
-**Location:** `/Users/akexorcist/Documents/Agent/Knowledge/`
+**Location:** `{TEAM_KNOWLEDGE_ROOT}` — read this value from `PROJECT_CONFIG.md` before doing anything else.
 
 Accumulated wisdom that grows smarter with every project, organized by tech stack.
 Contains patterns, gotchas, fix playbooks, and process improvements discovered in practice.
 
 **Read:** Before starting any work — read the files relevant to your role from the stack folder declared in `PROJECT_CONFIG.md` (`TECH_STACK_KEY`), plus `cross-project/`.
-**Write:** After completing work — when you discover something reusable and non-obvious. See `/Users/akexorcist/Documents/Agent/Knowledge/WRITING_GUIDE.md` for when and how to write.
+**Write:** After completing work — when you discover something reusable and non-obvious. See `{TEAM_KNOWLEDGE_ROOT}/WRITING_GUIDE.md` for when and how to write.
 
 ### Layer 2 — Project Knowledge (current project only)
 **Location:** `{PROJECT_ROOT}/.agents/output/shared_context.md`
@@ -28,7 +28,7 @@ Live memory for the current project: phase state, class locations, decisions, is
 
 ## Before Starting Work (Every Agent, Every Time)
 
-1. Read `PROJECT_CONFIG.md` → get `PROJECT_ROOT`, `TECH_STACK_KEY`, and `TEAM_KNOWLEDGE_ROOT`
+1. Read `PROJECT_CONFIG.md` → extract `PROJECT_ROOT`, `TECH_STACK_KEY`, and `TEAM_KNOWLEDGE_ROOT` — every path below depends on these values
 2. Read `{TEAM_KNOWLEDGE_ROOT}/team_knowledge.md` → understand what knowledge exists
 3. Read relevant stack files from `{TEAM_KNOWLEDGE_ROOT}/{TECH_STACK_KEY}/` based on your role:
 
