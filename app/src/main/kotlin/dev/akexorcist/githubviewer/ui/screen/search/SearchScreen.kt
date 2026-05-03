@@ -70,89 +70,105 @@ fun SearchScreen(
     }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { innerPadding ->
-        Column(
+        SearchScreenBody(
+            query = uiState.query,
+            users = uiState.users,
+            repositories = uiState.repositories,
+            onQueryChange = viewModel::onQueryChange,
+            onSearchClick = viewModel::onSearchClick,
+            onLoadMoreUsers = viewModel::onLoadMoreUsers,
+            onLoadMoreRepositories = viewModel::onLoadMoreRepositories,
+            onUserClick = onUserClick,
+            onRepoClick = onRepoClick,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
+        )
+    }
+}
+
+@Composable
+private fun SearchScreenBody(
+    query: String,
+    users: SectionState<SearchUserItem>,
+    repositories: SectionState<Repository>,
+    onQueryChange: (String) -> Unit,
+    onSearchClick: () -> Unit,
+    onLoadMoreUsers: () -> Unit,
+    onLoadMoreRepositories: () -> Unit,
+    onUserClick: (String) -> Unit,
+    onRepoClick: (String, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutlinedTextField(
-                    value = uiState.query,
-                    onValueChange = viewModel::onQueryChange,
-                    placeholder = { Text("Search GitHub...") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(8.dp))
-                IconButton(onClick = viewModel::onSearchClick) {
-                    Icon(Icons.Default.Search, contentDescription = "Search")
-                }
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                placeholder = { Text("Search GitHub...") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(8.dp))
+            IconButton(onClick = onSearchClick) {
+                Icon(Icons.Default.Search, contentDescription = "Search")
             }
+        }
 
-            if (uiState.query.isBlank()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "Search for users or repositories",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+        if (query.isBlank()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = "Search for users or repositories",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                item { SectionHeader("Users") }
+                when {
+                    users.isLoading -> item { SectionLoader() }
+                    users.error != null -> item { SectionError(onRetry = onSearchClick) }
+                    users.items.isEmpty() -> item { SectionEmpty("No users found") }
+                    else -> {
+                        items(users.items, key = { it.id }) { user ->
+                            UserResultItem(user = user, onClick = { onUserClick(user.login) })
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        }
+                        if (users.hasNextPage) {
+                            item {
+                                LoadMoreButton(isLoading = users.isLoadingMore, onClick = onLoadMoreUsers)
+                            }
+                        }
+                    }
                 }
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    item {
-                        SectionHeader("Users")
-                    }
-                    when {
-                        uiState.users.isLoading -> item { SectionLoader() }
-                        uiState.users.error != null -> item {
-                            SectionError(onRetry = viewModel::onSearchClick)
-                        }
-                        uiState.users.items.isEmpty() -> item { SectionEmpty("No users found") }
-                        else -> {
-                            items(uiState.users.items, key = { it.id }) { user ->
-                                UserResultItem(user = user, onClick = { onUserClick(user.login) })
-                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                            }
-                            if (uiState.users.hasNextPage) {
-                                item {
-                                    LoadMoreButton(
-                                        isLoading = uiState.users.isLoadingMore,
-                                        onClick = viewModel::onLoadMoreUsers,
-                                    )
-                                }
-                            }
-                        }
-                    }
 
-                    item { Spacer(Modifier.height(16.dp)) }
-                    item { SectionHeader("Repositories") }
+                item { Spacer(Modifier.height(16.dp)) }
+                item { SectionHeader("Repositories") }
 
-                    when {
-                        uiState.repositories.isLoading -> item { SectionLoader() }
-                        uiState.repositories.error != null -> item {
-                            SectionError(onRetry = viewModel::onSearchClick)
+                when {
+                    repositories.isLoading -> item { SectionLoader() }
+                    repositories.error != null -> item { SectionError(onRetry = onSearchClick) }
+                    repositories.items.isEmpty() -> item { SectionEmpty("No repositories found") }
+                    else -> {
+                        items(repositories.items, key = { it.id }) { repo ->
+                            RepositoryResultItem(
+                                repo = repo,
+                                onClick = { onRepoClick(repo.ownerLogin, repo.name) },
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         }
-                        uiState.repositories.items.isEmpty() -> item { SectionEmpty("No repositories found") }
-                        else -> {
-                            items(uiState.repositories.items, key = { it.id }) { repo ->
-                                RepositoryResultItem(
-                                    repo = repo,
-                                    onClick = { onRepoClick(repo.ownerLogin, repo.name) },
+                        if (repositories.hasNextPage) {
+                            item {
+                                LoadMoreButton(
+                                    isLoading = repositories.isLoadingMore,
+                                    onClick = onLoadMoreRepositories,
                                 )
-                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                            }
-                            if (uiState.repositories.hasNextPage) {
-                                item {
-                                    LoadMoreButton(
-                                        isLoading = uiState.repositories.isLoadingMore,
-                                        onClick = viewModel::onLoadMoreRepositories,
-                                    )
-                                }
                             }
                         }
                     }
@@ -304,6 +320,87 @@ private fun RepositoryResultItem(repo: Repository, onClick: () -> Unit) {
 }
 
 // ─── Previews ────────────────────────────────────────────────────────────────
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun SearchScreenIdlePreview() {
+    GithubViewerTheme {
+        SearchScreenBody(
+            query = "",
+            users = SectionState(),
+            repositories = SectionState(),
+            onQueryChange = {},
+            onSearchClick = {},
+            onLoadMoreUsers = {},
+            onLoadMoreRepositories = {},
+            onUserClick = {},
+            onRepoClick = { _, _ -> },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun SearchScreenLoadingPreview() {
+    GithubViewerTheme {
+        SearchScreenBody(
+            query = "android",
+            users = SectionState(isLoading = true),
+            repositories = SectionState(isLoading = true),
+            onQueryChange = {},
+            onSearchClick = {},
+            onLoadMoreUsers = {},
+            onLoadMoreRepositories = {},
+            onUserClick = {},
+            onRepoClick = { _, _ -> },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun SearchScreenContentPreview() {
+    GithubViewerTheme {
+        SearchScreenBody(
+            query = "android",
+            users = SectionState(
+                items = listOf(previewSearchUser, previewSearchUser.copy(id = 2, login = "gojuno", name = null)),
+                hasNextPage = true,
+            ),
+            repositories = SectionState(
+                items = listOf(previewSearchRepo, previewSearchRepo.copy(id = 2, name = "compose-samples", description = null, language = null)),
+            ),
+            onQueryChange = {},
+            onSearchClick = {},
+            onLoadMoreUsers = {},
+            onLoadMoreRepositories = {},
+            onUserClick = {},
+            onRepoClick = { _, _ -> },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun SearchScreenErrorPreview() {
+    GithubViewerTheme {
+        SearchScreenBody(
+            query = "android",
+            users = SectionState(error = dev.akexorcist.githubviewer.core.common.AppError.UnknownError),
+            repositories = SectionState(error = dev.akexorcist.githubviewer.core.common.AppError.UnknownError),
+            onQueryChange = {},
+            onSearchClick = {},
+            onLoadMoreUsers = {},
+            onLoadMoreRepositories = {},
+            onUserClick = {},
+            onRepoClick = { _, _ -> },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
 
 private val previewSearchUser = SearchUserItem(
     id = 1L,

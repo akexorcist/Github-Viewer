@@ -44,10 +44,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import dev.akexorcist.githubviewer.R
+import dev.akexorcist.githubviewer.core.common.AppError
+import dev.akexorcist.githubviewer.core.common.PagingState
 import dev.akexorcist.githubviewer.data.model.Repository
 import dev.akexorcist.githubviewer.data.model.User
 import dev.akexorcist.githubviewer.presentation.profile.UserProfileSnackbarEvent
 import dev.akexorcist.githubviewer.presentation.profile.UserProfileViewModel
+import kotlin.time.Instant
 import dev.akexorcist.githubviewer.ui.component.LastUpdatedText
 import dev.akexorcist.githubviewer.ui.component.ScreenErrorState
 import dev.akexorcist.githubviewer.ui.theme.GithubViewerTheme
@@ -108,72 +111,86 @@ fun UserProfileScreen(
 
             uiState.user != null -> {
                 val user = uiState.user ?: return@Scaffold
-                LazyColumn(
+                UserProfileLoaded(
+                    user = user,
+                    repositories = uiState.repositories,
+                    lastUpdatedAt = uiState.lastUpdatedAt,
+                    onRefresh = viewModel::onRefresh,
+                    onLoadMoreRepositories = viewModel::onLoadMoreRepositories,
+                    onRepoClick = onRepoClick,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun UserProfileLoaded(
+    user: User,
+    repositories: PagingState<Repository>,
+    lastUpdatedAt: Instant?,
+    onRefresh: () -> Unit,
+    onLoadMoreRepositories: () -> Unit,
+    onRepoClick: (String, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(modifier = modifier) {
+        item { UserHeader(user = user) }
+
+        lastUpdatedAt?.let {
+            item {
+                LastUpdatedText(
+                    instant = it,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
+        }
+
+        item {
+            Text(
+                text = "Repositories",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            )
+        }
+
+        items(repositories.items, key = { it.id }) { repo ->
+            RepositoryItem(repo = repo, onClick = { onRepoClick(repo.ownerLogin, repo.name) })
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        }
+
+        if (repositories.error != null) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                item { UserHeader(user = user) }
-
-                uiState.lastUpdatedAt?.let {
-                    item {
-                        LastUpdatedText(
-                            instant = it,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                        )
-                    }
-                }
-
-                item {
-                    Text(
-                        text = "Repositories",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    )
-                }
-
-                items(uiState.repositories.items, key = { it.id }) { repo ->
-                    RepositoryItem(
-                        repo = repo,
-                        onClick = { onRepoClick(repo.ownerLogin, repo.name) },
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                }
-
-                if (uiState.repositories.error != null) {
-                    item {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(stringResource(R.string.error_failed_to_load_repositories))
-                            Button(onClick = viewModel::onRefresh) { Text("Retry") }
-                        }
-                    }
-                }
-
-                if (uiState.repositories.hasNextPage) {
-                    item {
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (uiState.repositories.isLoadingMore) {
-                                CircularProgressIndicator()
-                            } else {
-                                Button(onClick = viewModel::onLoadMoreRepositories) {
-                                    Text("Load more")
-                                }
-                            }
-                        }
-                    }
+                    Text(stringResource(R.string.error_failed_to_load_repositories))
+                    Button(onClick = onRefresh) { Text("Retry") }
                 }
             }
+        }
+
+        if (repositories.hasNextPage) {
+            item {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (repositories.isLoadingMore) {
+                        CircularProgressIndicator()
+                    } else {
+                        Button(onClick = onLoadMoreRepositories) { Text("Load more") }
+                    }
+                }
             }
         }
     }
@@ -307,6 +324,63 @@ private val previewRepo = Repository(
     licenseName = "Apache 2.0",
     pushedAt = "2024-01-15T10:30:00Z",
 )
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun UserProfileScreenLoadingPreview() {
+    GithubViewerTheme {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun UserProfileScreenErrorPreview() {
+    GithubViewerTheme {
+        ScreenErrorState(
+            message = "Failed to load profile",
+            onRetry = {},
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun UserProfileScreenContentPreview() {
+    GithubViewerTheme {
+        UserProfileLoaded(
+            user = previewUser,
+            repositories = PagingState(
+                items = listOf(previewRepo, previewRepo.copy(id = 2, name = "kotlin-extensions", description = null, language = null)),
+                hasNextPage = true,
+            ),
+            lastUpdatedAt = null,
+            onRefresh = {},
+            onLoadMoreRepositories = {},
+            onRepoClick = { _, _ -> },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun UserProfileScreenRepoErrorPreview() {
+    GithubViewerTheme {
+        UserProfileLoaded(
+            user = previewUser,
+            repositories = PagingState(error = AppError.UnknownError),
+            lastUpdatedAt = null,
+            onRefresh = {},
+            onLoadMoreRepositories = {},
+            onRepoClick = { _, _ -> },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
 
 @Preview(showBackground = true)
 @Composable
