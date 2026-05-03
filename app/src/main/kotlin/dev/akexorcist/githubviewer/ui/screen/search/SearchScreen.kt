@@ -366,12 +366,31 @@ private fun SearchScreenContentPreview() {
         SearchScreenBody(
             query = "android",
             users = SectionState(
-                items = listOf(previewSearchUser, previewSearchUser.copy(id = 2, login = "gojuno", name = null)),
+                items = listOf(previewSearchUser, previewSearchUser.copy(id = 1, login = "gojuno", name = null)),
                 hasNextPage = true,
             ),
             repositories = SectionState(
                 items = listOf(previewSearchRepo, previewSearchRepo.copy(id = 2, name = "compose-samples", description = null, language = null)),
             ),
+            onQueryChange = {},
+            onSearchClick = {},
+            onLoadMoreUsers = {},
+            onLoadMoreRepositories = {},
+            onUserClick = {},
+            onRepoClick = { _, _ -> },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun SearchScreenEmptyPreview() {
+    GithubViewerTheme {
+        SearchScreenBody(
+            query = "android",
+            users = SectionState(items = emptyList()),
+            repositories = SectionState(items = emptyList()),
             onQueryChange = {},
             onSearchClick = {},
             onLoadMoreUsers = {},
@@ -425,22 +444,6 @@ private val previewSearchRepo = Repository(
     licenseName = "Apache 2.0",
     pushedAt = "2024-01-15T10:30:00Z",
 )
-
-@Preview(showBackground = true)
-@Composable
-private fun SectionHeaderPreview() {
-    GithubViewerTheme {
-        SectionHeader("Users")
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun SectionLoaderPreview() {
-    GithubViewerTheme {
-        SectionLoader()
-    }
-}
 
 @Preview(showBackground = true)
 @Composable
