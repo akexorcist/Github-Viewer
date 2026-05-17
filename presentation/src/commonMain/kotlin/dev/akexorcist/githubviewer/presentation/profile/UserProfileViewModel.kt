@@ -56,8 +56,12 @@ class UserProfileViewModel(
                             it.copy(user = result.data, isLoading = false, lastUpdatedAt = Clock.System.now())
                         }
                         is Result.Error -> {
-                            handleError(result.error)
-                            _uiState.update { it.copy(isLoading = false) }
+                            if (result.error is AppError.NetworkError) {
+                                _snackbarEvent.trySend(UserProfileSnackbarEvent.NoInternet)
+                                _uiState.update { it.copy(isLoading = false) }
+                            } else {
+                                _uiState.update { it.copy(error = result.error, isLoading = false) }
+                            }
                         }
                     }
                 }
@@ -107,11 +111,4 @@ class UserProfileViewModel(
             .launchIn(viewModelScope)
     }
 
-    private fun handleError(error: AppError) {
-        if (error is AppError.NetworkError) {
-            _snackbarEvent.trySend(UserProfileSnackbarEvent.NoInternet)
-        } else {
-            _uiState.update { it.copy(error = error) }
-        }
-    }
 }
