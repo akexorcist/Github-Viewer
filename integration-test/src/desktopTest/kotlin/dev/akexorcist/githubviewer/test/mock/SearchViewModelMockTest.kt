@@ -418,7 +418,7 @@ class SearchViewModelMockTest {
             viewModel.onQueryChange("android")
             viewModel.onSearchClick()
             var state = awaitItem()
-            while (state.users.isLoading || (state.users.items.isEmpty() && state.users.error == null)) state = awaitItem()
+            while (state.users.isLoading || state.repositories.isLoading || (state.users.items.isEmpty() && state.users.error == null)) state = awaitItem()
             state.users.hasNextPage.shouldBeFalse()
 
             viewModel.onLoadMoreUsers()
