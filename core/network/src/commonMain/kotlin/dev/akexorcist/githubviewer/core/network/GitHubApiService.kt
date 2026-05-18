@@ -102,6 +102,7 @@ class GitHubApiService(private val client: HttpClient) {
                         override fun log(message: String) = kermit.d { message }
                     }
                     level = if (enableLogging) LogLevel.INFO else LogLevel.NONE
+                    sanitizeHeader { header -> header == HttpHeaders.Authorization }
                 }
                 defaultRequest {
                     header("Accept", "application/vnd.github+json")
